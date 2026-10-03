@@ -1,0 +1,31 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Données réelles : jamais dans git (décision D-007)
+data/
+*.wav
+*.mp3
+*.m4a
+*.csv
+*.xlsx
+
+# Dépendances et builds
+node_modules/
+dist/
+build/
+.next/
+.turbo/
+coverage/
+
+# Supabase local
+backend/supabase/.branches/
+backend/supabase/.temp/
+
+# Système et éditeurs
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log

@@ -1,0 +1,10 @@
+# Les responsables listés ici sont ajoutés automatiquement en relecture.
+# Remplacer <github-eitan> et <github-ilan> par leurs noms d'utilisateur GitHub, puis décommenter.
+
+*                       @oren1996
+/backend/               @oren1996
+/docs/API_CONTRACTS.md  @oren1996
+/docs/DATABASE.md       @oren1996
+
+# /voice/               @<github-eitan> @oren1996
+# /dispatch/            @<github-ilan> @oren1996
