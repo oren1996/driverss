@@ -25,7 +25,7 @@ Tout repose sur des sadranim humains : répondre au téléphone, publier la cour
 | --- | --- | --- |
 | Client | Commande une course, cumule ses 7 % | Téléphone (074 ou numéro étoile) |
 | Sadran | Saisit, suit, attribue à la main en cas de besoin | Dashboard web, sur mobile |
-| Chauffeur | Reçoit les courses, clique « je prends » | Bot Telegram |
+| Chauffeur | Reçoit les courses, clique « je prends », suit ses courses, indique s'il est disponible | Bot Telegram et Mini App Telegram |
 | Gabbaï / institution | Reçoit les dons de 7 % | Nedarim Plus (Phase 3 et après) |
 | Yossef | Pilote l'activité | Dashboard |
 
@@ -41,7 +41,8 @@ Tout repose sur des sadranim humains : répondre au téléphone, publier la cour
 | Statuts : terminée, annulée, client absent | Ligne de consultation de solde |
 | Agent vocal sur la nuit et le débordement, puis tout (Phase 2) | Multi-stations réel, marque neutre (Phase 4) |
 | Transfert vers un sadran à tout moment | Agent de rappel, RAG avancé |
-| Fermeture Shabbat et fêtes | |
+| Fermeture Shabbat et fêtes | Mini App : carte, zones, filtres, historique, abonnement ([`MINIAPP.md`](MINIAPP.md)) |
+| Mini App chauffeur dans Telegram : courses disponibles, claim, mes courses, disponibilité | |
 
 ## Hors scope, volontairement
 

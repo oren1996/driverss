@@ -1,6 +1,6 @@
 # Driverss
 
-Automatisation du dispatch de Driverss : prise de commande (sadran, puis agent vocal), backend qui garde la vérité, diffusion des courses aux chauffeurs sur Telegram.
+Automatisation du dispatch de Driverss : prise de commande (sadran, puis agent vocal), backend qui garde la vérité, diffusion des courses aux chauffeurs sur Telegram (bot et Mini App).
 
 > **Statut : Phase 0 — Validation.** Aucun code de production avant la porte **G0** (avis juridique favorable, accord signé avec Yossef, données reçues). État à jour : [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md).
 
@@ -21,12 +21,13 @@ driverss/
 │   ├── ARCHITECTURE.md    ← modules, responsables, schémas
 │   ├── API_CONTRACTS.md   ← interfaces entre les 3 modules
 │   ├── DATABASE.md        ← tables et règles de données
+│   ├── MINIAPP.md         ← Mini App Telegram chauffeur : périmètre, écrans
 │   ├── DECISIONS.md       ← décisions importantes et pourquoi
 │   ├── CURRENT_STATE.md   ← où en est le projet maintenant
 │   └── TASKS.md           ← maintenant / ensuite / plus tard / fait
 ├── backend/               ← Oren — Supabase, logique métier, source de vérité
 ├── voice/                 ← Eitan — téléphonie SIP, agent vocal ElevenLabs
-├── dispatch/              ← Ilan — bot Telegram, dashboard du sadran
+├── dispatch/              ← Ilan — bot Telegram, Mini App chauffeur, dashboard du sadran
 └── .github/               ← CODEOWNERS, modèle de pull request
 ```
 
@@ -41,6 +42,7 @@ Chaque module a son propre `AGENTS.md` (règles locales) et son `CLAUDE.md` (qui
 | Coder dans un module | `AGENTS.md` du module + [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | Toucher une interface entre modules | [`API_CONTRACTS.md`](docs/API_CONTRACTS.md) |
 | Toucher la base | [`DATABASE.md`](docs/DATABASE.md) |
+| Travailler sur la Mini App chauffeur | [`MINIAPP.md`](docs/MINIAPP.md) + `dispatch/AGENTS.md` |
 | Comprendre pourquoi on a choisi X | [`DECISIONS.md`](docs/DECISIONS.md) |
 
 ## Équipe
@@ -49,7 +51,7 @@ Chaque module a son propre `AGENTS.md` (règles locales) et son `CLAUDE.md` (qui
 | --- | --- | --- |
 | Oren | Responsable technique : backend, base, contrats d'API, sécurité, revue de code | `backend/` |
 | Eitan | Produit et business : accord avec Yossef, agent vocal, vente aux stations | `voice/` |
-| Ilan | Dispatch et opérations : bot Telegram, dashboard, pilote chauffeurs, tests de bout en bout | `dispatch/` |
+| Ilan | Dispatch et opérations : bot Telegram, Mini App chauffeur, dashboard, pilote chauffeurs, tests de bout en bout | `dispatch/` |
 | Papa | Terrain : relation quotidienne avec Yossef, chauffeurs, portes des stations | — |
 
 ## Travailler avec une IA (Claude Code ou autre)
