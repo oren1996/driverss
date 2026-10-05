@@ -23,6 +23,7 @@ Les tâches de la Mini App chauffeur portent un identifiant `TMA-xx` parce qu'el
 - [ ] Collecter les codes et formats de messages des chauffeurs — Ilan
 - [ ] Valider Telegram une semaine avec les 10 chauffeurs, lister ceux qui ne peuvent pas l'installer — Ilan
 - [ ] Prise en main de Supabase, deux sessions en binôme avec Oren — Ilan
+- [ ] Installer les plugins Claude Code recommandés, chacun ceux de son rôle (tableau dans `README.md`) — Tous
 - [ ] Remplir les heures disponibles de chacun dans `PLAN.md` — Tous
 - [ ] **Porte G0** : avis juridique acceptable, accord signé, données reçues — Tous
 

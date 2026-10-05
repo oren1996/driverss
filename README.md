@@ -60,6 +60,23 @@ Chaque module a son propre `AGENTS.md` (règles locales) et son `CLAUDE.md` (qui
 2. Elle travaille uniquement dans le module de la personne qui la lance, sauf demande explicite.
 3. En fin de session, elle met à jour `docs/CURRENT_STATE.md` et `docs/TASKS.md`. Toute décision importante va dans `docs/DECISIONS.md`.
 
+### Plugins Claude Code à installer
+
+Quatre plugins seulement, tous officiels ou de partenaires connus. Chacun les installe sur son poste, dans Claude Code : commande `/plugin`, puis chercher le nom.
+
+| Plugin | Qui l'installe | Quand | Pourquoi |
+| --- | --- | --- | --- |
+| `context7` | Oren, Ilan, Eitan | Maintenant | Donne à Claude la documentation à jour des bibliothèques (Supabase, supabase-js, Telegram…), qui changent vite |
+| `supabase` | Oren | Dès le prototype TMA-03 | Accès au projet Supabase et bonnes pratiques Postgres (RLS, migrations, fonctions SQL) |
+| `security-guidance` | Oren, Ilan (Eitan s'il écrit du code) | Dès le premier code | Repère dans le code écrit par Claude les secrets en dur, failles d'authentification et injections |
+| `playwright` | Ilan | Phase 1 | Pilote un vrai navigateur pour tester la Mini App et le dashboard de bout en bout (règle d'or 8) |
+
+**Règles pour le plugin `supabase`** (il permet d'exécuter du SQL directement) : seulement sur un projet de **développement**, **jamais la production** ; en **lecture seule** et limité à ce projet ; approbation manuelle de chaque requête. Tout changement de schéma reste une migration dans git.
+
+Déjà inclus dans Claude Code, rien à installer : `/code-review` (relire une PR) et `/security-review`.
+
+Déconseillés : `telegram` (sert à piloter Claude Code depuis Telegram, pas à construire notre bot), `frontend-design` (pousse vers un design chargé, contraire à la spec de la Mini App), `superpowers` (impose un processus qui doublonne avec `AGENTS.md`).
+
 ## Workflow Git
 
 - `main` est protégée : tout passe par une pull request.

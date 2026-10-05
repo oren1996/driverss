@@ -49,6 +49,7 @@ Les dossiers des fonctions sont créés en Phase 1, pas avant la porte G0.
 - Les chauffeurs n'ont aucune politique RLS sur les tables métier. Leur seule politique : la réception de leurs canaux sur `realtime.messages`.
 - Chaque changement de statut écrit `ride_events` et émet un signal Broadcast sans donnée personnelle, dans la même transaction. Les événements D et R partent de `ride_events` : au moins une fois, avec `event_id`.
 - La clé `service_role` ne sort jamais du serveur.
+- MCP Supabase (plugin `supabase`) : projet de développement uniquement, jamais la production ; lecture seule, limité à ce projet. Ne jamais l'utiliser pour modifier le schéma ou les données : tout changement passe par une migration dans `backend/supabase/migrations/`.
 - `seed.sql` ne contient que des données inventées. Jamais de vraies données de Yossef.
 - Logs sans secrets, sans initData, sans jetons ni numéros de téléphone complets.
 
