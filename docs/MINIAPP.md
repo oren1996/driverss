@@ -2,7 +2,7 @@
 
 > **Spec v0 — proposée le 4 octobre 2026, à relire par Ilan.** Responsable : Ilan (produit, écrans, code dans [`dispatch/miniapp/`](../dispatch/miniapp/)). Contrats et sécurité : Oren. **Aucun code avant la porte G0** (D-002). Décisions : D-009 à D-016 dans [`DECISIONS.md`](DECISIONS.md).
 
-La Mini App est l'interface du chauffeur, ouverte dans Telegram. Elle affiche ce que le backend lui donne et lui transmet les demandes du chauffeur ; elle ne décide rien. Le bot reste le canal de notification et un chemin de claim complet.
+La Mini App est un complément du bot, ouvert dans Telegram : elle donne au chauffeur la vue d'ensemble (courses disponibles, mes courses, disponibilité). Elle affiche ce que le backend lui donne et lui transmet les demandes du chauffeur ; elle ne décide rien. En V1, le bot reste le canal principal : il notifie, et permet de prendre une course sans ouvrir la Mini App (D-009).
 
 | Je cherche… | Je lis |
 | --- | --- |

@@ -68,12 +68,12 @@ Les traits pleins existent dès la Phase 1 (sauf la voix, Phase 2). Les pointill
 | | Bot Telegram — `dispatch/bot/` | Mini App Telegram — `dispatch/miniapp/` | Dashboard — `dispatch/dashboard/` |
 | --- | --- | --- | --- |
 | Pour qui | Chauffeurs | Chauffeurs | Sadranim, Yossef |
-| Rôle | Inscription (partage du contact), notification de chaque course, bouton « je prends », message privé au gagnant | Interface principale du chauffeur : courses disponibles, détail, claim, mes courses, disponibilité, profil ([`MINIAPP.md`](MINIAPP.md)) | Saisie, suivi en direct, attribution manuelle, gestion des chauffeurs |
+| Rôle | Canal principal en V1 : inscription (partage du contact), notification de chaque course, bouton « je prends », message privé au gagnant | Complément du bot : vue d'ensemble pour le chauffeur — courses disponibles, détail, claim, mes courses, disponibilité, profil ([`MINIAPP.md`](MINIAPP.md)) | Saisie, suivi en direct, attribution manuelle, gestion des chauffeurs |
 | Parle au backend avec | `x-driverss-key`, secret du module, côté serveur | Jeton de session du chauffeur, aucun secret | Session du sadran, aucun secret |
 | Apprend les changements par | Événements D et R | Signaux temps réel + relecture, repli polling | Realtime |
 | Phase | 1 — chemin garanti pour la porte G1 | 1, après le bouton du bot ; G1 n'en dépend pas | 1 |
 
-Le bot et la Mini App se complètent. Le bot pousse la course (Telegram notifie même quand la Mini App est fermée) et garde un claim complet en un clic, qui marche aussi sur les téléphones où la Mini App ne s'ouvre pas (filtres, vieille version de Telegram). La Mini App donne la vue d'ensemble : liste en direct, détail, mes courses, disponibilité.
+Le bot et la Mini App se complètent ; en V1, le bot est le canal principal (D-009). Le bot pousse la course (Telegram notifie même quand la Mini App est fermée) et garde un claim complet en un clic, qui marche aussi sur les téléphones où la Mini App ne s'ouvre pas (filtres, vieille version de Telegram). La Mini App donne la vue d'ensemble : liste en direct, détail, mes courses, disponibilité.
 
 ## Frontières
 
