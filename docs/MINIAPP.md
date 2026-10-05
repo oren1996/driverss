@@ -2,7 +2,7 @@
 
 > **Spec v0 — proposée le 4 octobre 2026, à relire par Ilan.** Responsable : Ilan (produit, écrans, code dans [`dispatch/miniapp/`](../dispatch/miniapp/)). Contrats et sécurité : Oren. **Aucun code avant la porte G0** (D-002). Décisions : D-009 à D-016 dans [`DECISIONS.md`](DECISIONS.md).
 
-La Mini App est un complément du bot, ouvert dans Telegram : elle donne au chauffeur la vue d'ensemble (courses disponibles, mes courses, disponibilité). Elle affiche ce que le backend lui donne et lui transmet les demandes du chauffeur ; elle ne décide rien. En V1, le bot reste le canal principal : il notifie, et permet de prendre une course sans ouvrir la Mini App (D-009).
+La Mini App est un complément du bot, ouvert dans Telegram : elle donne au chauffeur la vue d'ensemble (courses disponibles, mes courses, disponibilité). Elle affiche ce que le backend lui donne et lui transmet les demandes du chauffeur ; elle ne décide rien. En Phase 1, le bot reste le canal principal : il notifie, et permet de prendre une course sans ouvrir la Mini App (D-009).
 
 | Je cherche… | Je lis |
 | --- | --- |
@@ -13,7 +13,7 @@ La Mini App est un complément du bot, ouvert dans Telegram : elle donne au chau
 
 ## Périmètre
 
-| V1 — Phase 1 | Plus tard — après G1, selon les mesures du pilote |
+| Phase 1 | Plus tard — après G1, selon les mesures du pilote |
 | --- | --- |
 | Connexion automatique par Telegram, sans mot de passe | Disponibilité par zone, rayon ou trajet ; GPS |
 | Profil : nom, téléphone, statut, bouton « appeler le sadran » | Carte, carte de la demande |
@@ -120,7 +120,7 @@ Ce qu'un chauffeur peut voir avant et après le claim est fixé par le backend :
 - Heure d'Israël (`Asia/Jerusalem`), format 24 h. Prix avec `Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS' })`.
 - Couleurs du thème Telegram (`themeParams`, clair et sombre) : pas d'identité visuelle copiée d'un concurrent, pas de marque en dur (`brand_name` vient de la station).
 - Texte de 16 px au moins, zones tactiles de 44 px au moins, contraste élevé : beaucoup de chauffeurs ont des téléphones anciens.
-- Application légère : pas de carte ni de grosse bibliothèque en V1.
+- Application légère : pas de carte ni de grosse bibliothèque en Phase 1.
 - Composants Telegram : `ready()`, `expand()`, `MainButton`, `BackButton`, `HapticFeedback` (succès, échec) ; relecture au retour au premier plan.
 
 ## Contraintes Telegram à connaître
@@ -144,23 +144,23 @@ Ce qu'un chauffeur peut voir avant et après le claim est fixé par le backend :
 
 | Observé chez le concurrent | Ce qu'on en tire |
 | --- | --- |
-| Toutes les courses arrivent en message privé du bot ; on peut demander une course depuis le message, sans la Mini App | Le bot est le canal principal en V1 ; la Mini App est un complément (D-009) |
+| Toutes les courses arrivent en message privé du bot ; on peut demander une course depuis le message, sans la Mini App | Le bot est le canal principal en Phase 1 ; la Mini App est un complément (D-009) |
 | La Mini App n'envoie aucune notification : c'est toujours le bot qui prévient | On garde le bot, même quand la Mini App existe |
 | Demande → attente d'une décision du sadran : 2 à 6 minutes, parfois sans réponse | Notre claim instantané est un avantage (D-013) |
 | Les détails de la course arrivent à la main, par WhatsApp, envoyés par le sadran | Chez nous, le backend envoie les détails au gagnant automatiquement, dans Telegram |
 | Le message du bot n'est pas mis à jour quand la course est prise : des chauffeurs cliquent sur des courses parties et reçoivent une erreur | Notre bot marque « נלקחה » sur les messages des autres à la réception de R ; c'est obligatoire |
 | 120 à 240 messages par heure pour un chauffeur | À notre volume, c'est gérable ; mais le filtrage par disponibilité deviendra important quand le volume grandira |
 | Inscription avec validation humaine | Notre pré-inscription par le sadran est le bon modèle |
-| Disponibilité par trajets et rayons, avec expiration | V1 : un interrupteur avec fin optionnelle ; zones et rayon plus tard |
+| Disponibilité par trajets et rayons, avec expiration | Phase 1 : un interrupteur avec fin optionnelle ; zones et rayon plus tard |
 | Le bot demande « dans combien de minutes es-tu à l'adresse ? », avec un lien Waze | Idée à garder : question Q10 |
 | Le chauffeur clôt lui-même (« client annulé », « clôture du paiement ») | Argument pour Q3, plus tard |
 | Les chauffeurs haredim utilisent visiblement sa Mini App | Encourageant pour les téléphones filtrés, mais pas une preuve : le test TMA-02 reste nécessaire |
 
 ## Questions ouvertes
 
-Liste unique des questions sur la Mini App. Tant qu'une question n'est pas tranchée, on applique la proposition V1. Une réponse devient une entrée de [`DECISIONS.md`](DECISIONS.md), puis la ligne est retirée d'ici.
+Liste unique des questions sur la Mini App. Tant qu'une question n'est pas tranchée, on applique la proposition pour la Phase 1. Une réponse devient une entrée de [`DECISIONS.md`](DECISIONS.md), puis la ligne est retirée d'ici.
 
-| # | Question | Qui tranche | Proposition V1 | Bloque |
+| # | Question | Qui tranche | Proposition Phase 1 | Bloque |
 | --- | --- | --- | --- | --- |
 | Q1 | La Mini App entre-t-elle vraiment en Phase 1, vu la charge d'Oren et d'Ilan ? | Tous | Oui, après le bouton du bot ; la porte G1 n'en dépend pas (D-009) | Planning de la Phase 1 |
 | Q2 | Notifier en message privé plutôt que dans un groupe ? Relancer à 60 s seulement les chauffeurs disponibles, ou tous les inscrits ? | Ilan, Papa | Message privé ; relance aux chauffeurs disponibles (D-014) | TMA-11 |
@@ -169,6 +169,6 @@ Liste unique des questions sur la Mini App. Tant qu'une question n'est pas tranc
 | Q5 | Un chauffeur peut-il avoir plusieurs courses `claimed` en même temps (courses réservées à l'avance) ? | Papa, Oren | Pas de limite | — |
 | Q6 | Il manque une table des sadranim et un contrat de gestion des chauffeurs (pré-inscription, blocage avec révocation des sessions, déliaison Telegram) | Oren, avec Ilan | À écrire avant TMA-05 | TMA-05 |
 | Q7 | Quel domaine pour héberger la Mini App, et faut-il le faire autoriser par les fournisseurs de filtres des téléphones casher ? | Ilan, Papa | Domaine stable dédié ; réponse attendue du test TMA-02 | TMA-02, TMA-13 |
-| Q8 | Le message privé du bot au gagnant (téléphone du client) reste dans l'historique Telegram : faut-il le masquer après la clôture ? | Eitan (avocat, amendement 13) | Le garder en V1, en attendant l'avis | Pilote |
+| Q8 | Le message privé du bot au gagnant (téléphone du client) reste dans l'historique Telegram : faut-il le masquer après la clôture ? | Eitan (avocat, amendement 13) | Le garder en Phase 1, en attendant l'avis | Pilote |
 | Q9 | Formulation des boutons et ton (masculin ou neutre) | Papa, avec les 10 testeurs | Textes du tableau « Textes clés » | — |
-| Q10 | Demander au gagnant, juste après le claim, dans combien de minutes il sera à l'adresse (avec un lien Waze) ? Utile au sadran, et plus tard pour informer le client | Ilan, Papa | Pas en V1 ; si oui, une question **après** le claim, pour ne jamais le ralentir | — |
+| Q10 | Demander au gagnant, juste après le claim, dans combien de minutes il sera à l'adresse (avec un lien Waze) ? Utile au sadran, et plus tard pour informer le client | Ilan, Papa | Pas en Phase 1 ; si oui, une question **après** le claim, pour ne jamais le ralentir | — |

@@ -15,7 +15,7 @@ Une seule application monopage (D-010), mobile, en hébreu de droite à gauche, 
 
 ## Stack proposée (D-010, à confirmer par Ilan)
 
-Vite, React et TypeScript ; supabase-js pour la session et le temps réel ; script officiel `telegram-web-app.js`. Pas de bibliothèque de carte en V1. Même stack que le dashboard. Hébergement statique en HTTPS, sur un domaine stable.
+Vite, React et TypeScript ; supabase-js pour la session et le temps réel ; script officiel `telegram-web-app.js`. Pas de bibliothèque de carte en Phase 1. Même stack que le dashboard. Hébergement statique en HTTPS, sur un domaine stable.
 
 ## Structure prévue (Phase 1)
 

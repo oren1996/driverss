@@ -36,7 +36,7 @@ Spec de la Mini App : `docs/MINIAPP.md`. Frontières, auth, temps réel, claim :
 - Les signaux temps réel ne sont que des déclencheurs : l'état affiché vient toujours d'une relecture (M, N). Le repli par polling est obligatoire.
 - Aucune donnée client en cache persistant.
 - Le bouton « התקשר לסדרן » reste toujours accessible (règle d'or 5).
-- Ni carte, ni filtres, ni paiement, ni abonnement en V1 (D-015).
+- Ni carte, ni filtres, ni paiement, ni abonnement en Phase 1 (D-015).
 
 ## Règles propres au bot
 

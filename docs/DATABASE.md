@@ -60,14 +60,14 @@ Valeurs de `ride_events` :
 
 ## Ce qu'on n'ajoute pas — et pourquoi
 
-| Idée | Pourquoi pas en V1 |
+| Idée | Pourquoi pas en Phase 1 |
 | --- | --- |
-| `ride_offers` (une course offerte à un chauffeur précis) | Le claim est ouvert à tous les éligibles ; les destinataires sont calculés au moment de la diffusion et envoyés dans l'événement D. Une table d'offres ne sert qu'aux offres directes ou au dispatch un par un, pas prévus en V1. |
+| `ride_offers` (une course offerte à un chauffeur précis) | Le claim est ouvert à tous les éligibles ; les destinataires sont calculés au moment de la diffusion et envoyés dans l'événement D. Une table d'offres ne sert qu'aux offres directes ou au dispatch un par un, pas prévus en Phase 1. |
 | `driver_sessions` | Les sessions sont celles de Supabase Auth. Une table maison seulement si le prototype impose l'option (b) de D-011. |
-| `driver_availability` (table séparée) | Deux colonnes suffisent ; pas besoin d'historique en V1. |
+| `driver_availability` (table séparée) | Deux colonnes suffisent ; pas besoin d'historique en Phase 1. |
 | `driver_devices`, préférences | Telegram gère l'appareil et les notifications. |
 | `ride_claim_events` | `ride_events` couvre déjà claims, attributions et refus. |
-| `service_areas`, PostGIS, GPS | L'éligibilité V1 ne dépend pas du lieu. À rouvrir avec la disponibilité par zone ou par rayon, après G1. |
+| `service_areas`, PostGIS, GPS | L'éligibilité de la Phase 1 ne dépend pas du lieu. À rouvrir avec la disponibilité par zone ou par rayon, après G1. |
 | `cities` | `places` (ville + quartier) et `place_aliases` existent déjà. |
 
 ## Disponibilité effective

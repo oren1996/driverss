@@ -68,12 +68,12 @@ Les traits pleins existent dès la Phase 1 (sauf la voix, Phase 2). Les pointill
 | | Bot Telegram — `dispatch/bot/` | Mini App Telegram — `dispatch/miniapp/` | Dashboard — `dispatch/dashboard/` |
 | --- | --- | --- | --- |
 | Pour qui | Chauffeurs | Chauffeurs | Sadranim, Yossef |
-| Rôle | Canal principal en V1 : inscription (partage du contact), notification de chaque course, bouton « je prends », message privé au gagnant | Complément du bot : vue d'ensemble pour le chauffeur — courses disponibles, détail, claim, mes courses, disponibilité, profil ([`MINIAPP.md`](MINIAPP.md)) | Saisie, suivi en direct, attribution manuelle, gestion des chauffeurs |
+| Rôle | Canal principal en Phase 1 : inscription (partage du contact), notification de chaque course, bouton « je prends », message privé au gagnant | Complément du bot : vue d'ensemble pour le chauffeur — courses disponibles, détail, claim, mes courses, disponibilité, profil ([`MINIAPP.md`](MINIAPP.md)) | Saisie, suivi en direct, attribution manuelle, gestion des chauffeurs |
 | Parle au backend avec | `x-driverss-key`, secret du module, côté serveur | Jeton de session du chauffeur, aucun secret | Session du sadran, aucun secret |
 | Apprend les changements par | Événements D et R | Signaux temps réel + relecture, repli polling | Realtime |
 | Phase | 1 — chemin garanti pour la porte G1 | 1, après le bouton du bot ; G1 n'en dépend pas | 1 |
 
-Le bot et la Mini App se complètent ; en V1, le bot est le canal principal (D-009). Le bot pousse la course (Telegram notifie même quand la Mini App est fermée) et garde un claim complet en un clic, qui marche aussi sur les téléphones où la Mini App ne s'ouvre pas (filtres, vieille version de Telegram). La Mini App donne la vue d'ensemble : liste en direct, détail, mes courses, disponibilité.
+Le bot et la Mini App se complètent ; en Phase 1, le bot est le canal principal (D-009). Le bot pousse la course (Telegram notifie même quand la Mini App est fermée) et garde un claim complet en un clic, qui marche aussi sur les téléphones où la Mini App ne s'ouvre pas (filtres, vieille version de Telegram). La Mini App donne la vue d'ensemble : liste en direct, détail, mes courses, disponibilité.
 
 ## Frontières
 
@@ -132,7 +132,7 @@ sequenceDiagram
 
 Si personne ne prend la course en 60 secondes : le bot la relance aux mêmes destinataires, puis le sadran l'attribue à la main depuis le dashboard (`assign-ride`, même fonction atomique que le claim). Le chauffeur attribué est prévenu par le bot (événement R) et par la Mini App (signal `ride_assigned`).
 
-## Éligibilité (V1)
+## Éligibilité (Phase 1)
 
 Calculée par le backend uniquement. Ni le bot, ni la Mini App, ni le dashboard n'ajoutent ou ne retirent quelqu'un.
 
@@ -142,7 +142,7 @@ Calculée par le backend uniquement. Ni le bot, ni la Mini App, ni le dashboard 
 | Voir la course dans la Mini App et la prendre | Chauffeur de la station, `active`, Telegram lié. La disponibilité n'est pas exigée : prendre une course, c'est se déclarer disponible pour elle | `driver-rides`, `claim_ride` |
 | Recevoir une attribution manuelle | Tout chauffeur `active` de la station, lié à Telegram ou non (sinon le sadran l'appelle) | `claim_ride`, appelée par `assign-ride` |
 
-Disponible = `is_available` et `available_until` non dépassé ([`DATABASE.md`](DATABASE.md)). Pas en V1 : zones, rayon, GPS, véhicule, niveaux de chauffeur. Un chauffeur en retard de paiement (Phase 3) passera par `status = blocked`, déjà prévu.
+Disponible = `is_available` et `available_until` non dépassé ([`DATABASE.md`](DATABASE.md)). Pas en Phase 1 : zones, rayon, GPS, véhicule, niveaux de chauffeur. Un chauffeur en retard de paiement (Phase 3) passera par `status = blocked`, déjà prévu.
 
 ## Authentification des chauffeurs (Mini App)
 
@@ -179,7 +179,7 @@ sequenceDiagram
 | Qui valide | Uniquement `driver-auth-telegram`, côté backend. Vérification du `hash` selon la documentation Telegram (HMAC-SHA256, clé dérivée du token du bot de la station), comparaison en temps constant, bibliothèque éprouvée et vecteurs de test. |
 | Fraîcheur | `auth_date` de moins de 300 s (réglable : `TELEGRAM_INITDATA_MAX_AGE_S`), et pas plus de 60 s dans le futur. Sinon `init_data_expired` : la Mini App demande de la fermer et de la rouvrir. |
 | Identité | Seul `user.id` compte : c'est `drivers.telegram_user_id` (entier 64 bits). Le nom, le pseudo et la photo ne servent qu'à l'affichage. `start_param` sert à la navigation, jamais à autoriser. |
-| Station | Déduite du bot dont le token valide la signature, jamais envoyée par le client. Un seul bot en V1 ; un bot par station en Phase 4. |
+| Station | Déduite du bot dont le token valide la signature, jamais envoyée par le client. Un seul bot en Phase 1 ; un bot par station en Phase 4. |
 | Correspondance Telegram → chauffeur | Pas de création de chauffeur à la connexion, sinon n'importe quel compte Telegram deviendrait chauffeur. Le chauffeur est pré-inscrit (import ou sadran) avec son téléphone, puis lié par le bot quand il partage son contact (contrat Q). Un compte Telegram par chauffeur et par station. Inconnu → `driver_not_linked` ; bloqué → `driver_blocked`. |
 | Utilisateur Supabase | Un utilisateur Supabase Auth par chauffeur (`drivers.auth_user_id`), créé par le backend à la première connexion, sans mot de passe ni e-mail réel. Inscriptions publiques et connexions anonymes désactivées dans le projet. |
 | Émission de la session | (a) Recommandé : session Supabase Auth émise côté serveur pour l'utilisateur lié — rafraîchissement et révocation fournis par Supabase. (b) Repli : JWT signé par le backend avec une clé de signature du projet, avec notre propre rafraîchissement. Choix tranché par le prototype jetable TMA-03 ; avec (a), le contrat J ne change pas pour la Mini App. |
@@ -245,14 +245,14 @@ Chaque refus est journalisé (`claim_rejected`, avec la raison et le canal) : c'
 
 | Donnée | Avant le claim — tout chauffeur éligible | Après le claim — le chauffeur attribué, tant que `claimed` | Après clôture |
 | --- | --- | --- | --- |
-| Trajet (ville, quartier), horaire, type, passagers, prix | Oui | Oui | Non (pas d'historique en V1) |
+| Trajet (ville, quartier), horaire, type, passagers, prix | Oui | Oui | Non (pas d'historique en Phase 1) |
 | `message_text` (format habituel, sans donnée client) | Oui | Oui | Non |
 | Adresse de prise en charge | Non | Oui | Non |
 | Téléphone du client | Non | Oui | Non |
 | Notes du sadran | Non | Oui | Non |
-| Nom du client | Non | Non (V1) | Non |
+| Nom du client | Non | Non (Phase 1) | Non |
 
-Pas en V1 : la « demande » soumise à l'accord d'un sadran, l'heure d'arrivée estimée, le désistement par le chauffeur (il appelle le sadran).
+Pas en Phase 1 : la « demande » soumise à l'accord d'un sadran, l'heure d'arrivée estimée, le désistement par le chauffeur (il appelle le sadran).
 
 ## Mini App : vue technique
 
