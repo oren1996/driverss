@@ -1,6 +1,6 @@
 # État actuel
 
-**Mis à jour le :** 4 octobre 2026
+**Mis à jour le :** 5 octobre 2026
 **Phase :** 0 — Validation (semaines 1 à 3)
 **Prochaine porte :** G0 — avis juridique acceptable, accord signé, données reçues
 
@@ -29,7 +29,7 @@
 - Pas de 7 % pour une course annulée ou un client absent ([D-006](DECISIONS.md), à valider avec Yossef).
 - Mini App chauffeur ([D-009 à D-016](DECISIONS.md)) : relecture par Ilan et Oren (TMA-01).
 - Émission de la session des chauffeurs (D-011, option a ou b) : après le prototype TMA-03.
-- Neuf questions ouvertes sur la Mini App, avec qui tranche : « Questions ouvertes » dans [`MINIAPP.md`](MINIAPP.md).
+- Dix questions ouvertes sur la Mini App, avec qui tranche : « Questions ouvertes » dans [`MINIAPP.md`](MINIAPP.md).
 
 ## Prochaines étapes
 
