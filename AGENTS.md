@@ -7,7 +7,7 @@ Ce fichier s'adresse à toute IA (Claude Code, Codex, Cursor…) qui travaille d
 - Driverss est un service de courses et de livraisons commandées par téléphone, surtout dans le public orthodoxe. Fondateur : Yossef.
 - Driverss prélève 12 % au chauffeur : 7 % sont crédités au client (ou donnés à une institution via Nedarim Plus), 5 % couvrent la technologie.
 - Aujourd'hui, tout repose sur des sadranim humains : ils répondent, publient la course aux chauffeurs, ressaisissent tout dans un logiciel.
-- On construit le système qui automatise ce travail : saisie unique, diffusion Telegram, claim atomique, puis agent vocal.
+- On construit le système qui automatise ce travail : saisie unique, diffusion Telegram (bot et Mini App chauffeur), claim atomique, puis agent vocal.
 - Le système doit pouvoir être revendu à d'autres stations, sous une marque neutre.
 
 ## Phase actuelle
@@ -18,24 +18,24 @@ Ce fichier s'adresse à toute IA (Claude Code, Codex, Cursor…) qui travaille d
 
 1. `docs/CURRENT_STATE.md` — où on en est.
 2. Le `AGENTS.md` du module dans lequel tu travailles.
-3. `docs/API_CONTRACTS.md` si tu touches une interface, `docs/DATABASE.md` si tu touches la base.
+3. `docs/API_CONTRACTS.md` si tu touches une interface, `docs/DATABASE.md` si tu touches la base, `docs/MINIAPP.md` si tu touches la Mini App chauffeur.
 4. `docs/DECISIONS.md` avant de proposer un changement d'approche.
 
 ## Qui possède quoi
 
 | Module | Responsable | Possède | Ne fait jamais |
 | --- | --- | --- | --- |
-| `backend/` | Oren | Base, prix, statuts, transitions, claim atomique, grand livre des 7 %, sécurité | Prompt vocal détaillé, UX du bot |
+| `backend/` | Oren | Base, prix, statuts, transitions, claim atomique, éligibilité des chauffeurs, auth des chauffeurs (initData), temps réel, grand livre des 7 %, sécurité | Prompt vocal détaillé, UX du bot et de la Mini App |
 | `voice/` | Eitan | Téléphonie SIP, agent ElevenLabs, prompt, tests vocaux, transfert humain | Calculer un prix, écrire en base, choisir un chauffeur |
-| `dispatch/` | Ilan | Bot Telegram, dashboard du sadran, repli manuel, mesures du pilote | Calculer un prix, créer une course dans son propre stockage, décider seul qu'une course est prise |
+| `dispatch/` | Ilan | Bot Telegram, Mini App chauffeur (`dispatch/miniapp/`), dashboard du sadran, repli manuel, mesures du pilote | Calculer un prix, créer une course dans son propre stockage, décider qui est notifié ou qui peut prendre une course, décider seul qu'une course est prise |
 
 Tu travailles dans le module de la personne qui t'a lancé. Pour modifier un autre module, demande d'abord.
 
 ## Les règles d'or
 
-1. **Le backend est la seule source de vérité.** `voice/` et `dispatch/` ne parlent qu'aux APIs du backend, jamais directement à Postgres.
+1. **Le backend est la seule source de vérité.** `voice/` et `dispatch/` (bot, Mini App, dashboard) ne parlent qu'aux APIs du backend, jamais directement à Postgres.
 2. **Le prix vient toujours du backend.** Personne n'invente, ne recalcule ni n'annonce un prix qui ne vient pas de l'API.
-3. **Le claim est atomique côté backend.** Deux chauffeurs qui cliquent en même temps : un seul gagne, et c'est le backend qui le décide.
+3. **Le claim est atomique côté backend.** Deux chauffeurs qui cliquent en même temps, dans le bot ou dans la Mini App : un seul gagne, et c'est le backend qui le décide.
 4. **Un contrat d'API ne change pas en douce.** Toute modification passe par `docs/API_CONTRACTS.md`, dans une pull request relue par les deux côtés.
 5. **Un humain toujours joignable.** On ne supprime jamais le transfert vers un sadran ni l'attribution manuelle.
 6. **Telegram uniquement** pour les chauffeurs. Pas de WhatsApp, ni comme canal ni comme repli (décision D-001).
@@ -54,8 +54,8 @@ Tu travailles dans le module de la personne qui t'a lancé. Pour modifier un aut
 
 - Commiter un secret, une clé, un token ou un fichier `.env`.
 - Commiter des données clients, des enregistrements d'appels ou un export du logiciel de Yossef.
-- Mettre un numéro de téléphone client dans un message envoyé à plusieurs chauffeurs.
-- Utiliser la clé `service_role` de Supabase ailleurs que côté serveur.
+- Mettre un numéro de téléphone ou un nom de client dans un message, un écran ou un signal temps réel vu par plusieurs chauffeurs.
+- Mettre un secret (`service_role`, `x-driverss-key`, token du bot) ailleurs que côté serveur — jamais dans la Mini App ni dans le dashboard.
 - Modifier la production à la main (console Supabase) au lieu d'une migration.
 
 ## Fin de session

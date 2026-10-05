@@ -1,6 +1,6 @@
 # Plan détaillé par phase
 
-Mis à jour le 3 octobre 2026. Version de travail : les durées sont des estimations en semaines, à recaler dès que chacun aura donné ses heures disponibles.
+Mis à jour le 4 octobre 2026. Version de travail : les durées sont des estimations en semaines, à recaler dès que chacun aura donné ses heures disponibles.
 
 On rend Driverss rentable en automatisant le travail des sadranim, puis on revend le système à d'autres stations. Rien ne part en production avant un avis juridique favorable et un accord signé avec Yossef.
 
@@ -43,7 +43,7 @@ En parallèle : le prototype vocal d'Eitan démarre dès la Phase 1, hors produc
 | Ilan | A étudié au Technion, sait utiliser Claude Code | Dispatch et opérations : bot de diffusion, dashboard du sadran, pilote avec les chauffeurs, tests de bout en bout | Expérience chauffeur et sadran, déroulé du pilote |
 | Papa | Driver, connaît le terrain | Terrain et relation : interlocuteur de Yossef au quotidien, recrutement des chauffeurs testeurs, retours terrain, portes des stations | Ce qui est acceptable pour les chauffeurs |
 
-**Pourquoi Ilan ne touche pas au backend :** son code ne manipule jamais l'argent ni l'attribution. Son bot et son dashboard appellent seulement quelques endpoints d'Oren. Le claim atomique et la sécurité restent chez Oren.
+**Pourquoi Ilan ne touche pas au backend :** son code ne manipule jamais l'argent ni l'attribution. Son bot, sa Mini App et son dashboard appellent seulement des endpoints d'Oren. Le claim atomique et la sécurité restent chez Oren.
 
 **Le risque d'organisation :** Oren est le goulot d'étranglement. Les parades : des services clés en main, un nombre d'endpoints réduit, et l'agent vocal configuré par Eitan dans l'interface ElevenLabs plutôt qu'en code.
 
@@ -82,13 +82,14 @@ Le risque n°1 est juridique. Transporter des passagers contre paiement sans lic
 - [ ] Décider qui est la source de vérité pour les soldes de 7 % : le logiciel de Yossef ou le nôtre (selon qu'il a une API ou un export).
 - [ ] Décider avec Papa comment le prix est fixé : table fixe ou négocié dans le groupe.
 - [ ] Écrire le schéma v0 et les contrats d'API v0.
+- [ ] Prototype jetable, hors production : initData Telegram → session Supabase → canal Realtime privé, pour trancher l'authentification de la Mini App (D-011).
 - [ ] Vérifier que la clause d'exclusivité ne bloque pas le projet de dispatch de colis d'Oren.
 
 **Ilan**
 
 - [ ] Observer sur place comment un sadran traite une course aujourd'hui, et l'écrire étape par étape.
 - [ ] Collecter avec Papa les codes et formats de messages des chauffeurs.
-- [ ] Valider Telegram pendant une semaine avec les 10 chauffeurs : installation, téléphones filtrés, bouton « je prends ». Lister ceux qui ne peuvent pas l'installer.
+- [ ] Valider Telegram pendant une semaine avec les 10 chauffeurs : installation, téléphones filtrés, bouton « je prends », ouverture d'une Mini App de démonstration jetable (filtres, version de Telegram, temps réel). Lister ceux qui ne peuvent pas installer Telegram ou ouvrir la Mini App.
 - [ ] Prendre en main Supabase et Claude Code sur un mini-projet, avec deux sessions en binôme avec Oren.
 
 **Questions pour l'avocat**
@@ -123,13 +124,13 @@ flowchart LR
     D --> E{"Pris en 60 s ?"}
     E -- oui --> F["<b>Claim atomique</b><br/>un seul gagnant"]
     F --> G["Chauffeur informé<br/>le sadran voit tout"]
-    E -- non --> H["Relance Telegram<br/>à tous les inscrits"]
+    E -- non --> H["Relance Telegram<br/>aux chauffeurs disponibles"]
     H -- pris --> F
     H -- toujours pas pris --> I["Attribution<br/>à la main par le sadran"]
     I --> F
 ```
 
-Si personne ne prend la course en 60 secondes, le bot la relance à tous les chauffeurs inscrits sur Telegram, puis le sadran l'attribue à la main. Dans les deux cas, l'attribution passe par le claim atomique du backend.
+Si personne ne prend la course en 60 secondes, le bot la relance aux chauffeurs disponibles (D-014), puis le sadran l'attribue à la main. Dans tous les cas — bot, Mini App ou sadran — l'attribution passe par le claim atomique du backend.
 
 ```mermaid
 stateDiagram-v2
@@ -157,6 +158,7 @@ Proposition à valider avec Yossef : ni crédit de 7 % ni commission pour une co
 - [ ] Créer le schéma Supabase : stations, clients, lieux et alias, prix, institutions, chauffeurs, courses, événements de course, grand livre des 7 %. `station_id` dans chaque table, règles d'accès (RLS).
 - [ ] Importer les données de Yossef.
 - [ ] Endpoints : création de course depuis le dashboard, calcul du prix, claim atomique, changement de statut (terminée, annulée, client absent).
+- [ ] Contrats chauffeur ([`MINIAPP.md`](MINIAPP.md), contrats J à R) : inscription Telegram, authentification de la Mini App, lecture des courses, claim, disponibilité, signaux temps réel, événement `ride_status_changed`. L'éligibilité (qui est notifié, qui peut prendre) est calculée par le backend.
 - [ ] Créditer les 7 % et compter la commission uniquement au statut « terminée ».
 - [ ] Brancher la synchro avec le logiciel de Yossef, selon la décision de la Phase 0.
 - [ ] Sécurité : secrets côté serveur uniquement, signature des webhooks, pas de numéro de client dans un message de groupe.
@@ -165,8 +167,9 @@ Proposition à valider avec Yossef : ni crédit de 7 % ni commission pour une co
 **Ilan**
 
 - [ ] Dashboard du sadran, sur mobile et en hébreu (droite à gauche) : formulaire de saisie, courses en direct, chauffeurs, statuts.
-- [ ] Bot Telegram : inscription des chauffeurs, diffusion de la course au format qu'ils utilisent déjà, bouton « je prends » qui appelle le claim d'Oren, message privé au gagnant.
-- [ ] Repli : course non prise en 60 secondes, le bot la relance à tous les chauffeurs inscrits et elle est surlignée dans le dashboard pour que le sadran l'attribue à la main.
+- [ ] Bot Telegram : inscription des chauffeurs par partage du contact, notification en message privé aux destinataires choisis par le backend, au format qu'ils utilisent déjà, bouton « je prends » qui appelle le claim d'Oren, message privé au gagnant.
+- [ ] Repli : course non prise en 60 secondes, le bot la relance aux chauffeurs disponibles et elle est surlignée dans le dashboard pour que le sadran l'attribue à la main.
+- [ ] Mini App chauffeur ([`MINIAPP.md`](MINIAPP.md)) : courses disponibles en direct, claim, mes courses, disponibilité. Après le bouton du bot : la porte G1 n'en dépend pas.
 - [ ] Lancer le pilote avec les 10 chauffeurs, puis l'ouvrir à tous.
 - [ ] Envoyer chaque semaine les mesures du pilote.
 
@@ -182,7 +185,7 @@ Proposition à valider avec Yossef : ni crédit de 7 % ni commission pour une co
 - [ ] Faire remonter chaque semaine les problèmes du terrain.
 - [ ] Gérer les chauffeurs réticents.
 
-**Ce qu'on mesure chaque semaine :** temps de saisie d'une course, délai avant qu'un chauffeur la prenne, part des courses non prises en 60 secondes, doubles attributions, écarts de solde avec l'ancien logiciel.
+**Ce qu'on mesure chaque semaine :** temps de saisie d'une course, délai avant qu'un chauffeur la prenne, part des courses non prises en 60 secondes, doubles attributions, part des claims par canal (bot, Mini App), écarts de solde avec l'ancien logiciel.
 
 **Porte G1 :** pendant deux semaines de suite, toutes les courses passent par le système, aucune double attribution, et les soldes concordent.
 
@@ -297,6 +300,7 @@ Objectif : signer une première station pilote sous une marque neutre (pas « Dr
 | La ligne cachée aux concurrents (voie B) finit par se savoir | Ne construire aucune fonctionnalité qui dépend du secret | Tous |
 | Les chauffeurs n'adoptent pas l'outil, les concurrents font pression | Même format de message qu'aujourd'hui, Papa sur le terrain | Papa |
 | Des chauffeurs ne peuvent pas installer Telegram (téléphones filtrés) ou n'en veulent pas | Test en Phase 0 avec les 10 chauffeurs, aide à l'installation par Papa. Ceux qui restent sans Telegram reçoivent leurs courses par téléphone, via le sadran | Ilan et Papa |
+| La Mini App ne s'ouvre pas sur certains téléphones (filtres, vieilles versions de Telegram), ou le temps réel y est bloqué | Test en Phase 0 ; le bouton « je prends » du bot reste un chemin complet ; repli par polling | Ilan |
 | Reconnaissance vocale : hébreu orthodoxe, yiddish, noms de rues, mauvais son | Voix hors chemin critique, seuils de la porte G2 | Eitan |
 | Recouvrement : les chauffeurs encaissent en liquide | Facturation automatique et blocage en Phase 3 | Oren |
 | Vie privée : enregistrements d'appels, numéros parrainés | Stockage privé, consentement de l'ami parrainé, avis de l'avocat sur l'amendement 13 | Oren |
