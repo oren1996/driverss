@@ -35,7 +35,7 @@
 - Règle d'arrondi du grand livre (D-018) : avec Yossef, à vérifier sur l'export.
 - File des envois du bot (D-019) : Oren et Ilan.
 - Aucun envoi pendant Shabbat et les fêtes (D-020) : Papa et Oren.
-- Devis identifié et version des courses (D-021) : Oren ; Eitan prévenu.
+- Devis identifié et version des courses (D-021) : Oren ; Eitan à prévenir (la voix crée aussi des courses).
 - Questions sur la Mini App : « Questions ouvertes » dans [`MINIAPP.md`](MINIAPP.md).
 
 ## Prochaines étapes

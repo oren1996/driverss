@@ -23,7 +23,7 @@ Deux pistes portent un identifiant, parce que leurs tâches dépendent les unes 
 - [ ] Décider la source de vérité des soldes de 7 % — Oren
 - [ ] Décider le modèle de prix, avec Papa — Oren
 - [ ] Finaliser le schéma v0 (`DATABASE.md`) et les contrats v0 (`API_CONTRACTS.md`) — Oren
-- [ ] Trancher les décisions proposées D-017 à D-021 (relecture du 7 octobre) — Oren, Ilan ; avec Papa (D-020) et Yossef (D-018) ; Eitan prévenu pour le devis (D-021)
+- [ ] Trancher les décisions proposées D-017 à D-021 (relecture du 7 octobre) — Oren, Ilan ; avec Papa (D-020) et Yossef (D-018) ; Eitan à prévenir pour le devis (D-021)
 - [ ] Vérifier que l'exclusivité ne bloque pas le projet de colis d'Oren — Oren
 - [ ] Observer un sadran sur place et écrire le déroulé — Ilan
 - [ ] Collecter les codes et formats de messages des chauffeurs — Ilan
