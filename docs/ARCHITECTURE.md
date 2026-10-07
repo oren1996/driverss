@@ -15,7 +15,7 @@ flowchart TB
 
     subgraph BACKEND["backend/ — Oren"]
         direction LR
-        API["Edge Functions<br/>contrats d'API,<br/>auth des chauffeurs"] <--> DB[("Postgres Supabase<br/>courses, statuts, éligibilité,<br/>grand livre des 7 %")]
+        API["Edge Functions<br/>contrats d'API,<br/>auth et droits"] <--> DB[("Postgres Supabase<br/>courses, statuts, éligibilité,<br/>file des envois, grand livre des 7 %")]
         DB --> RT["Supabase Realtime<br/>signaux sans données"]
     end
 
@@ -38,7 +38,7 @@ flowchart TB
     Client --> SIP
     VA -->|tools| API
     API <-->|saisie, attribution| DASH
-    API <-->|événements, claim, inscription| BOT
+    API <-->|file des envois, claim, inscription| BOT
     API <-->|jeton chauffeur| TMA
     RT -->|temps réel| DASH
     RT -->|signaux| TMA
@@ -57,9 +57,9 @@ Les traits pleins existent dès la Phase 1 (sauf la voix, Phase 2). Les pointill
 | | `voice/` | `backend/` | `dispatch/` |
 | --- | --- | --- | --- |
 | Responsable | Eitan | Oren | Ilan |
-| Mission | Transformer un appel en commande structurée et confirmée | Source de vérité : prix, courses, statuts, éligibilité, argent, identité des chauffeurs | Notifier les chauffeurs désignés par le backend, leur donner une interface pour prendre la course, informer le sadran |
-| Entrées | Audio, numéro appelant, réponses de l'API | Appels des tools, saisies du dashboard, claims du bot et de la Mini App, initData Telegram, webhooks | Événements du backend (`ride_ready_for_dispatch`, `ride_status_changed`), signaux temps réel, réponses de l'API |
-| Sorties | Appels aux tools, transfert humain, fin d'appel | Course persistée, prix verrouillé, statut, événements, signaux temps réel, sessions des chauffeurs | Claims, attributions manuelles, inscriptions Telegram, disponibilité, mesures du pilote |
+| Mission | Transformer un appel en commande structurée et confirmée | Source de vérité : prix, courses, statuts, éligibilité, droits, argent, identité des chauffeurs | Notifier les chauffeurs désignés par le backend, leur donner une interface pour prendre la course, informer le sadran |
+| Entrées | Audio, numéro appelant, réponses de l'API | Appels des tools, saisies du dashboard, claims du bot et de la Mini App, initData Telegram, confirmations d'envoi du bot, webhooks | File des envois du backend (nouvelle course, changement de statut), signaux temps réel, réponses de l'API |
+| Sorties | Appels aux tools, transfert humain, fin d'appel | Course persistée, devis et prix verrouillé, statut, envois pour le bot, signaux temps réel, sessions des chauffeurs | Claims, attributions manuelles, inscriptions Telegram, disponibilité, confirmations d'envoi, mesures du pilote |
 | Outils | Trunk SIP israélien, ElevenLabs Agents | Supabase (Postgres, RLS, Edge Functions, Auth, Realtime) | Telegram Bot API, Telegram Mini Apps, applications web |
 | Démarre | Prototype en Phase 1, production en Phase 2 | Phase 1 | Phase 1 |
 
@@ -69,9 +69,9 @@ Les traits pleins existent dès la Phase 1 (sauf la voix, Phase 2). Les pointill
 | --- | --- | --- | --- |
 | Pour qui | Chauffeurs | Chauffeurs | Sadranim, Yossef |
 | Rôle | Canal principal en Phase 1 : inscription (partage du contact), notification de chaque course, bouton « je prends », message privé au gagnant | Complément du bot : vue d'ensemble pour le chauffeur — courses disponibles, détail, claim, mes courses, disponibilité, profil ([`MINIAPP.md`](MINIAPP.md)) | Saisie, suivi en direct, attribution manuelle, gestion des chauffeurs |
-| Parle au backend avec | `x-driverss-key`, secret du module, côté serveur | Jeton de session du chauffeur, aucun secret | Session du sadran, aucun secret |
-| Apprend les changements par | Événements D et R | Signaux temps réel + relecture, repli polling | Realtime |
-| Phase | 1 — chemin garanti pour la porte G1 | 1, après le bouton du bot ; G1 n'en dépend pas | 1 |
+| Parle au backend avec | `x-driverss-key`, secret du module, côté serveur | Jeton de session du chauffeur, aucun secret | Session d'un sadran (table `dispatchers`, avec un rôle), aucun secret |
+| Apprend les changements par | La file des envois (contrat T), lue quand le backend le réveille | Signaux temps réel + relecture, repli polling | Realtime |
+| Phase | 1 — chemin garanti pour la porte G1 | 1, après le bot ; G1 n'en dépend pas | 1 |
 
 Le bot et la Mini App se complètent ; en Phase 1, le bot est le canal principal (D-009). Le bot pousse la course (Telegram notifie même quand la Mini App est fermée) et garde un claim complet en un clic, qui marche aussi sur les téléphones où la Mini App ne s'ouvre pas (filtres, vieille version de Telegram). La Mini App donne la vue d'ensemble : liste en direct, détail, mes courses, disponibilité.
 
@@ -90,12 +90,13 @@ Le bot et la Mini App se complètent ; en Phase 1, le bot est le canal principal
 **Le backend possède :**
 
 - la validation de l'authentification : initData, sessions, révocation ;
+- les droits : quel appelant peut faire quoi, dans quelle station (tableau « Qui peut appeler quoi » dans [`API_CONTRACTS.md`](API_CONTRACTS.md)) ;
 - la vérité des courses et toutes les transitions de statut ;
 - l'éligibilité : qui est notifié, qui voit une course, qui peut la prendre ;
 - la concurrence du claim et de l'attribution manuelle ;
-- les règles métier : prix, fermetures, grand livre ;
-- l'historique d'audit (`ride_events`), claims refusés compris ;
-- les signaux temps réel et les événements envoyés à `dispatch/`.
+- les règles métier : prix et devis, fermetures, grand livre ;
+- l'historique d'audit (`ride_events`, `driver_events`), claims refusés compris ;
+- les signaux temps réel et la file des envois du bot : qui reçoit quoi, et quand.
 
 ## Le flux d'une course en Phase 1
 
@@ -109,9 +110,10 @@ sequenceDiagram
     actor C as Chauffeurs
 
     S->>D: saisit la course
-    D->>B: create-ride
-    B-->>D: ride_id, prix
-    B->>T: ride_ready_for_dispatch + destinataires
+    D->>B: get-quote puis create-ride
+    B-->>D: ride_id, prix du devis
+    B->>T: réveil, envois « nouvelle course » prêts
+    T->>B: lit la file des envois
     T->>C: message privé + « je prends » + « ouvrir »
     B-)M: signal ride_available
     alt claim depuis le bot
@@ -124,13 +126,14 @@ sequenceDiagram
         B-->>M: claimed ou already_taken
     end
     Note over B: fonction claim_ride<br/>posted → claimed, un seul gagnant
-    B->>T: ride_status_changed
+    B->>T: réveil, envois « prise » prêts
+    T->>B: lit la file des envois
     T->>C: détails au gagnant, « prise » aux autres
     B-)M: signaux ride_unavailable et ride_assigned
     B-->>D: statut en direct
 ```
 
-Si personne ne prend la course en 60 secondes : le bot la relance aux mêmes destinataires, puis le sadran l'attribue à la main depuis le dashboard (`assign-ride`, même fonction atomique que le claim). Le chauffeur attribué est prévenu par le bot (événement R) et par la Mini App (signal `ride_assigned`).
+Si personne ne prend la course en 60 secondes : le backend la relance aux chauffeurs disponibles à ce moment-là (destinataires recalculés), puis le sadran l'attribue à la main depuis le dashboard (`assign-ride`, même fonction atomique que le claim). Le chauffeur attribué est prévenu par le bot (envoi R) et par la Mini App (signal `ride_assigned`).
 
 ## Éligibilité (Phase 1)
 
@@ -138,11 +141,46 @@ Calculée par le backend uniquement. Ni le bot, ni la Mini App, ni le dashboard 
 
 | Action | Qui | Où c'est appliqué |
 | --- | --- | --- |
-| Être notifié d'une nouvelle course | Chauffeur de la station, `active`, Telegram lié, disponible | `recipients` de l'événement D |
+| Être notifié d'une nouvelle course | Chauffeur de la station, `active`, Telegram lié, disponible | Envois « nouvelle course » (D), puis relance à 60 s avec des destinataires recalculés |
 | Voir la course dans la Mini App et la prendre | Chauffeur de la station, `active`, Telegram lié. La disponibilité n'est pas exigée : prendre une course, c'est se déclarer disponible pour elle | `driver-rides`, `claim_ride` |
 | Recevoir une attribution manuelle | Tout chauffeur `active` de la station, lié à Telegram ou non (sinon le sadran l'appelle) | `claim_ride`, appelée par `assign-ride` |
 
 Disponible = `is_available` et `available_until` non dépassé ([`DATABASE.md`](DATABASE.md)). Pas en Phase 1 : zones, rayon, GPS, véhicule, niveaux de chauffeur. Un chauffeur en retard de paiement (Phase 3) passera par `status = blocked`, déjà prévu.
+
+## Envois du bot : fiabilité
+
+Le bot est le canal principal (D-009) : ses envois doivent survivre à une panne, partir dans le bon ordre et respecter les limites de Telegram. Proposition D-019, à valider par Oren et Ilan.
+
+```mermaid
+sequenceDiagram
+    participant B as Backend
+    participant F as File des envois
+    participant T as Bot
+    actor C as Chauffeurs
+
+    B->>F: changement de statut et un envoi par destinataire, même transaction
+    B-)T: réveil sans données, et régulièrement par sécurité
+    T->>F: bot-outbox pull
+    F-->>T: envois à jour, réservés 60 s
+    T->>C: messages Telegram, dans les limites de Telegram
+    T->>F: bot-outbox ack, avec l'identifiant de chaque message
+```
+
+| Règle | Comment |
+| --- | --- |
+| Rien ne se perd | Les envois sont créés dans la même transaction que le changement de statut. Un envoi non confirmé en 60 s redevient disponible : si le bot redémarre au milieu d'une diffusion, seuls les envois non confirmés repartent. |
+| Suivi par destinataire | Un envoi par chauffeur, avec son état (en attente, envoyé, échec) et l'identifiant du message Telegram, pour le modifier ensuite (« נלקחה »). |
+| Jamais dans le désordre | Chaque course porte une `version`, +1 à chaque changement de statut. Le backend ne remet jamais un envoi dont la version est dépassée : un « הנסיעה שלך! » ne part jamais après une annulation, et une course déjà prise n'est plus diffusée. |
+| Relance à 60 s | Tâche planifiée du backend, pas un minuteur du bot, qui se perdrait au redémarrage. Les destinataires sont recalculés à ce moment-là : un chauffeur bloqué ou devenu indisponible entre-temps n'est pas relancé. Une seule relance par course. |
+| Limites de Telegram | Moins de 30 messages par seconde au total, au plus un par seconde au même chauffeur. Sur un refus 429, l'envoi repart après le délai indiqué par Telegram ; après 5 échecs, il est abandonné et signalé au sadran. |
+| Doublon rare | Si le bot tombe entre l'envoi et la confirmation, l'envoi repart : un chauffeur peut exceptionnellement recevoir deux fois le même message. Accepté. |
+
+Écartée : garder l'appel direct du backend vers le bot et donner au bot sa propre mémoire des envois. C'était plus de logique dans le bot, et une exception à la règle d'or 1.
+
+## Fermetures et pannes
+
+- **Shabbat et fêtes (D-020, proposée) :** pendant une fermeture (table `closures`), aucun envoi ni relance ; la file reste vide pour le bot. Les envois en attente à l'entrée sont réévalués à la sortie, et les envois dépassés sont abandonnés. Avant l'entrée, le dashboard signale les courses encore libres. Dès la Phase 1, pas seulement pour la voix.
+- **Panne du backend ou du bot :** les sadranim reprennent à la main, selon une procédure écrite (tâche SOC-12). À la reprise, la file repart d'elle-même, sans renvoyer les envois dépassés.
 
 ## Authentification des chauffeurs (Mini App)
 
@@ -180,13 +218,13 @@ sequenceDiagram
 | Fraîcheur | `auth_date` de moins de 300 s (réglable : `TELEGRAM_INITDATA_MAX_AGE_S`), et pas plus de 60 s dans le futur. Sinon `init_data_expired` : la Mini App demande de la fermer et de la rouvrir. |
 | Identité | Seul `user.id` compte : c'est `drivers.telegram_user_id` (entier 64 bits). Le nom, le pseudo et la photo ne servent qu'à l'affichage. `start_param` sert à la navigation, jamais à autoriser. |
 | Station | Déduite du bot dont le token valide la signature, jamais envoyée par le client. Un seul bot en Phase 1 ; un bot par station en Phase 4. |
-| Correspondance Telegram → chauffeur | Pas de création de chauffeur à la connexion, sinon n'importe quel compte Telegram deviendrait chauffeur. Le chauffeur est pré-inscrit (import ou sadran) avec son téléphone, puis lié par le bot quand il partage son contact (contrat Q). Un compte Telegram par chauffeur et par station. Inconnu → `driver_not_linked` ; bloqué → `driver_blocked`. |
+| Correspondance Telegram → chauffeur | Pas de création de chauffeur à la connexion, sinon n'importe quel compte Telegram deviendrait chauffeur. Le chauffeur est pré-inscrit (import, ou contrat S par un `admin`) avec son téléphone, puis lié par le bot quand il partage son contact (contrat Q). Un compte Telegram par chauffeur et par station. Inconnu → `driver_not_linked` ; bloqué → `driver_blocked`. |
 | Utilisateur Supabase | Un utilisateur Supabase Auth par chauffeur (`drivers.auth_user_id`), créé par le backend à la première connexion, sans mot de passe ni e-mail réel. Inscriptions publiques et connexions anonymes désactivées dans le projet. |
 | Émission de la session | (a) Recommandé : session Supabase Auth émise côté serveur pour l'utilisateur lié — rafraîchissement et révocation fournis par Supabase. (b) Repli : JWT signé par le backend avec une clé de signature du projet, avec notre propre rafraîchissement. Choix tranché par le prototype jetable TMA-03 ; avec (a), le contrat J ne change pas pour la Mini App. |
 | Durée de vie | Jeton d'accès d'une heure au plus, rafraîchi automatiquement par supabase-js et transmis à Realtime. Session gardée en mémoire seulement (`persistSession: false`) : chaque ouverture de la Mini App refait l'échange. |
 | Utilisation | Les fonctions `driver-*` exigent `Authorization: Bearer <access_token>`, vérifient le jeton, retrouvent le chauffeur par `auth_user_id` et relisent son statut à chaque appel. L'identité ne vient jamais du corps de la requête. |
-| RLS | Les chauffeurs n'ont **aucune** politique sur les tables métier : RLS étant activé partout, tout est refusé. Leur seule politique : recevoir les messages de leurs canaux sur `realtime.messages`. Chauffeurs et sadranim étant tous deux `authenticated`, aucune politique ne s'appuie sur ce seul rôle. |
-| Révocation | Bloquer un chauffeur passe par une fonction backend qui met `status = 'blocked'` et révoque ses sessions. Effet immédiat sur les fonctions `driver-*`, sur le claim et sur l'ouverture d'un canal temps réel. Un canal déjà ouvert peut encore recevoir des signaux sans données jusqu'à l'expiration du jeton. |
+| RLS | Les chauffeurs n'ont **aucune** politique sur les tables métier : RLS étant activé partout, tout est refusé. Leur seule politique : recevoir les messages de leurs canaux sur `realtime.messages`, par une fonction d'aide qui vérifie le chauffeur sans leur ouvrir la table `drivers` ([`DATABASE.md`](DATABASE.md)). Chauffeurs et sadranim étant tous deux `authenticated`, aucune politique ne s'appuie sur ce seul rôle. |
+| Révocation | Bloquer un chauffeur passe par le contrat S (`manage-driver`, rôle `admin`), qui met `status = 'blocked'` et révoque ses sessions. Effet immédiat sur les fonctions `driver-*`, sur le claim et sur l'ouverture d'un canal temps réel. Un canal déjà ouvert peut encore recevoir des signaux sans données jusqu'à l'expiration du jeton. |
 | Journaux | Jamais d'initData, de jeton ni de numéro complet dans les logs. Les refus sont comptés par code pour le pilote. |
 
 ## Temps réel
@@ -214,9 +252,9 @@ sequenceDiagram
 
 Règles :
 
-- **Émission :** un trigger sur `rides` appelle `realtime.send` à chaque changement de statut (dont le passage à `posted`), dans la même transaction : rien ne part si elle échoue. Charge utile : `ride_id`, type, horodatage, et `reason`, `via` ou `status`. Jamais d'adresse, de nom ni de téléphone.
+- **Émission :** un trigger sur `rides` appelle `realtime.send` à chaque changement de statut (dont le passage à `posted`), dans la même transaction : rien ne part si elle échoue. Charge utile : `ride_id`, `version`, type, horodatage, et `reason`, `via` ou `status`. Jamais d'adresse, de nom ni de téléphone.
 - **Canaux privés seulement :** l'accès public aux canaux est désactivé. Les clients ne peuvent pas émettre (aucune politique d'insertion sur `realtime.messages`).
-- **Signal + relecture :** à chaque signal, la Mini App relit l'état par `driver-rides`, en regroupant les signaux sur 500 ms. Elle relit aussi à l'abonnement et au retour au premier plan, puisque les signaux manqués ne sont pas rejoués.
+- **Signal + relecture :** à chaque signal, la Mini App relit l'état par `driver-rides`, en regroupant les signaux sur 500 ms. Elle relit aussi à l'abonnement et au retour au premier plan, puisque les signaux manqués ne sont pas rejoués. Une réponse dont la `version` est plus ancienne que celle déjà affichée est ignorée.
 - **Repli :** si le canal n'est pas abonné après 10 s, ou se coupe, relecture toutes les 20 s tant que la Mini App est visible ; arrêt dès que le canal revient. Les filtres de certains téléphones peuvent bloquer les WebSockets : ce repli doit suffire à lui seul.
 
 Détail du contrat : P dans [`API_CONTRACTS.md`](API_CONTRACTS.md).
@@ -226,10 +264,17 @@ Détail du contrat : P dans [`API_CONTRACTS.md`](API_CONTRACTS.md).
 1. Le chauffeur appuie sur « אני לוקח » : bouton principal de la Mini App, ou bouton du message du bot.
 2. La Mini App appelle `driver-claim-ride` avec seulement `ride_id` : le chauffeur vient du jeton. Le bot appelle `claim-ride` avec `ride_id` et le `telegram_user_id` de l'auteur du clic, reçu par son webhook vérifié.
 3. Le backend retrouve le chauffeur et appelle la fonction SQL `claim_ride` — la même pour le bot, la Mini App et le dashboard (`assign-ride`).
-4. `claim_ride` fait **une seule requête conditionnelle** : la course passe à `claimed` seulement si elle est encore `posted` et si le chauffeur est `active` dans la même station. L'événement `ride_events` est écrit dans la même transaction. Esquisse SQL : [`DATABASE.md`](DATABASE.md).
-5. Après la transaction : signaux `ride_unavailable` (station) et `ride_assigned` (gagnant) ; événement R vers le bot, qui envoie les détails au gagnant en message privé et marque « נלקחה » les messages des autres.
+4. `claim_ride` fait **une seule requête conditionnelle** : la course passe à `claimed` seulement si elle est encore `posted` et si le chauffeur est `active` dans la même station. La `version` augmente de 1 et l'événement `ride_events` est écrit dans la même transaction. Esquisse SQL : [`DATABASE.md`](DATABASE.md).
+5. Dans la même transaction : signaux `ride_unavailable` (station) et `ride_assigned` (gagnant), et envois R dans la file du bot — détails au gagnant en message privé, « נלקחה » sur les messages des autres.
 
-**Deux chauffeurs au même instant**, quel que soit leur canal : Postgres verrouille la ligne ; la deuxième mise à jour attend la première, relit `status`, trouve `claimed` et ne modifie rien → `already_taken`. Une annulation par le sadran au même moment suit la même règle : la première opération passe, l'autre reçoit un refus explicite.
+**Deux chauffeurs au même instant**, quel que soit leur canal : Postgres verrouille la ligne ; la deuxième mise à jour attend la première, relit `status`, trouve `claimed` et ne modifie rien → `already_taken`.
+
+**Un claim et une annulation du sadran au même instant :** la transaction qui verrouille la ligne en premier passe.
+
+- Annulation d'abord : le claim reçoit `not_claimable`.
+- Claim d'abord : l'annulation s'applique ensuite à la course prise (`claimed → cancelled` est permis), et le chauffeur est prévenu (envoi R, signal `ride_cancelled`).
+
+Pour que l'annulation soit refusée quand la course a changé depuis que le sadran l'a vue, le dashboard envoie `expected_version` (contrat G) : course modifiée entre-temps → `version_conflict`, le dashboard relit et le sadran décide.
 
 | Cas | Réponse | Ce que voit le chauffeur |
 | --- | --- | --- |
@@ -252,7 +297,7 @@ Chaque refus est journalisé (`claim_rejected`, avec la raison et le canal) : c'
 | Notes du sadran | Non | Oui | Non |
 | Nom du client | Non | Non (Phase 1) | Non |
 
-Pas en Phase 1 : la « demande » soumise à l'accord d'un sadran, l'heure d'arrivée estimée, le désistement par le chauffeur (il appelle le sadran).
+Pas en Phase 1 : la « demande » soumise à l'accord d'un sadran, l'heure d'arrivée estimée, le désistement par le chauffeur. S'il se désiste, il appelle le sadran, qui annule la course et la recrée ; la nouvelle course garde le lien vers l'ancienne (`replaces_ride_id`).
 
 ## Mini App : vue technique
 
@@ -266,8 +311,8 @@ flowchart LR
     subgraph SB["Supabase — backend/, Oren"]
         AUTH["driver-auth-telegram<br/>valide l'initData"]
         FN["Fonctions driver-*<br/>lecture, claim, disponibilité"]
-        MOD["Fonctions des modules<br/>claim-ride, link-driver-telegram"]
-        SQL[("Postgres<br/>claim_ride, ride_events")]
+        MOD["Fonctions des modules<br/>claim-ride, link-driver-telegram,<br/>bot-outbox"]
+        SQL[("Postgres<br/>claim_ride, ride_events,<br/>file des envois")]
         RT["Realtime Broadcast<br/>canaux privés"]
     end
 
@@ -281,8 +326,8 @@ flowchart LR
     MOD --> SQL
     SQL -->|trigger, signaux| RT
     RT -->|4 · signaux sans données| APP
-    SQL -->|événements D et R| BOTSRV
-    BOTSRV -->|x-driverss-key| MOD
+    SQL -.->|réveil| BOTSRV
+    BOTSRV -->|lit la file, claim, inscription| MOD
     BOTSRV --> CHAT
 ```
 
@@ -291,7 +336,7 @@ flowchart LR
 - **Le backend décide.** Les statuts critiques ne s'écrivent que par une fonction backend atomique, jamais directement depuis un frontend ou un bot.
 - **Un seul chemin par action.** Bot, Mini App et dashboard prennent ou attribuent une course par la même fonction SQL.
 - **Multi-stations dès le premier jour.** Chaque table métier porte `station_id`. Plus tard, chaque station aura sa marque, sa voix, ses zones et ses règles.
-- **Un humain toujours joignable.** Transfert vers un sadran à tout moment (voix), attribution manuelle à tout moment (dispatch), bouton « appeler le sadran » dans la Mini App.
+- **Un humain toujours joignable.** Transfert vers un sadran à tout moment (voix), attribution manuelle à tout moment (dispatch), bouton « appeler le sadran » dans la Mini App, et retour au manuel si le système tombe.
 - **Les chauffeurs gardent leurs codes.** Le message de course reprend le format qu'ils utilisent aujourd'hui.
 - **Le vocabulaire local est un chantier à part entière.** Dictionnaire des villes, quartiers, synagogues et termes yiddish ; confirmation de l'adresse à voix haute.
 - **Ne pas reconstruire ce qui existe.** Paiement, facturation et téléphonie passent par des prestataires israéliens.
@@ -300,9 +345,9 @@ flowchart LR
 ## Sécurité
 
 - La clé `service_role` de Supabase reste côté serveur. Le dashboard et la Mini App n'ont que la clé `anon` (publique par conception) et le jeton de leur utilisateur ; les actions critiques passent par des fonctions serveur.
-- Chaque appel entre modules est authentifié par un secret propre au module (voir [`API_CONTRACTS.md`](API_CONTRACTS.md)) ; chaque appel d'un chauffeur, par son jeton de session.
+- Chaque appel entre modules est authentifié par un secret propre au module, y compris le réveil du bot par le backend (voir [`API_CONTRACTS.md`](API_CONTRACTS.md)) ; chaque appel d'un chauffeur ou d'un sadran, par son jeton de session. Ce que chacun a le droit de faire : tableau « Qui peut appeler quoi ».
 - Le webhook Telegram vérifie l'en-tête secret fourni par Telegram. Le webhook de fin d'appel ElevenLabs vérifie sa signature.
 - Jamais de numéro ni de nom de client dans un message, un écran ou un signal temps réel vu par plusieurs chauffeurs.
-- Les fonctions SQL `security definer`, dont `claim_ride`, ne sont pas exécutables par `anon` ni `authenticated`.
+- Les fonctions SQL `security definer` vivent dans un schéma non exposé par l'API. Celles qui modifient des données, dont `claim_ride`, ne sont pas exécutables par `anon` ni `authenticated` ; seules les fonctions d'aide RLS, en lecture seule, le sont par `authenticated`.
 - Les fonctions `driver-*` n'acceptent que l'origine de la Mini App (CORS).
 - Enregistrements d'appels dans un stockage privé. Durée de conservation à fixer avec l'avocat (amendement 13).

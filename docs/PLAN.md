@@ -130,7 +130,7 @@ flowchart LR
     I --> F
 ```
 
-Si personne ne prend la course en 60 secondes, le bot la relance aux chauffeurs disponibles (D-014), puis le sadran l'attribue à la main. Dans tous les cas — bot, Mini App ou sadran — l'attribution passe par le claim atomique du backend.
+Si personne ne prend la course en 60 secondes, le backend la relance aux chauffeurs disponibles à ce moment-là (D-014, D-019), puis le sadran l'attribue à la main. Dans tous les cas — bot, Mini App ou sadran — l'attribution passe par le claim atomique du backend.
 
 ```mermaid
 stateDiagram-v2
@@ -157,18 +157,20 @@ Proposition à valider avec Yossef : ni crédit de 7 % ni commission pour une co
 
 - [ ] Créer le schéma Supabase : stations, clients, lieux et alias, prix, institutions, chauffeurs, courses, événements de course, grand livre des 7 %. `station_id` dans chaque table, règles d'accès (RLS).
 - [ ] Importer les données de Yossef.
-- [ ] Endpoints : création de course depuis le dashboard, calcul du prix, claim atomique, changement de statut (terminée, annulée, client absent).
-- [ ] Contrats chauffeur ([`MINIAPP.md`](MINIAPP.md), contrats J à R) : inscription Telegram, authentification de la Mini App, lecture des courses, claim, disponibilité, signaux temps réel, événement `ride_status_changed`. L'éligibilité (qui est notifié, qui peut prendre) est calculée par le backend.
+- [ ] Endpoints : devis identifié et création de course (D-021), claim atomique, changement de statut (terminée, annulée, client absent), gestion des chauffeurs ; droits de chaque appelant, modules, sadranim et chauffeurs (D-017).
+- [ ] File des envois du bot et relance planifiée à 60 s (D-019) ; aucune diffusion pendant Shabbat et les fêtes (D-020).
+- [ ] Contrats chauffeur ([`MINIAPP.md`](MINIAPP.md), contrats J à P) : inscription Telegram, authentification de la Mini App, lecture des courses, claim, disponibilité, signaux temps réel. L'éligibilité (qui est notifié, qui peut prendre) est calculée par le backend.
 - [ ] Créditer les 7 % et compter la commission uniquement au statut « terminée ».
 - [ ] Brancher la synchro avec le logiciel de Yossef, selon la décision de la Phase 0.
-- [ ] Sécurité : secrets côté serveur uniquement, signature des webhooks, pas de numéro de client dans un message de groupe.
+- [ ] Sécurité : secrets côté serveur uniquement, signature des webhooks, pas de numéro de client dans un message vu par plusieurs chauffeurs.
 - [ ] Relire chaque modification d'Ilan avant fusion.
 
 **Ilan**
 
 - [ ] Dashboard du sadran, sur mobile et en hébreu (droite à gauche) : formulaire de saisie, courses en direct, chauffeurs, statuts.
-- [ ] Bot Telegram : inscription des chauffeurs par partage du contact, notification en message privé aux destinataires choisis par le backend, au format qu'ils utilisent déjà, bouton « je prends » qui appelle le claim d'Oren, message privé au gagnant.
-- [ ] Repli : course non prise en 60 secondes, le bot la relance aux chauffeurs disponibles et elle est surlignée dans le dashboard pour que le sadran l'attribue à la main.
+- [ ] Bot Telegram : inscription des chauffeurs par partage du contact, envoi en message privé des courses que le backend dépose dans la file des envois, au format qu'ils utilisent déjà, bouton « je prends » qui appelle le claim d'Oren, message privé au gagnant.
+- [ ] Repli : course non prise en 60 secondes, le backend la relance aux chauffeurs disponibles et elle est surlignée dans le dashboard pour que le sadran l'attribue à la main.
+- [ ] Procédure écrite de retour au manuel si le backend ou le bot tombe, avec Papa.
 - [ ] Mini App chauffeur ([`MINIAPP.md`](MINIAPP.md)) : courses disponibles en direct, claim, mes courses, disponibilité. Après le bouton du bot : la porte G1 n'en dépend pas.
 - [ ] Lancer le pilote avec les 10 chauffeurs, puis l'ouvrir à tous.
 - [ ] Envoyer chaque semaine les mesures du pilote.
@@ -185,7 +187,7 @@ Proposition à valider avec Yossef : ni crédit de 7 % ni commission pour une co
 - [ ] Faire remonter chaque semaine les problèmes du terrain.
 - [ ] Gérer les chauffeurs réticents.
 
-**Ce qu'on mesure chaque semaine :** temps de saisie d'une course, délai avant qu'un chauffeur la prenne, part des courses non prises en 60 secondes, doubles attributions, part des claims par canal (bot, Mini App), écarts de solde avec l'ancien logiciel.
+**Ce qu'on mesure chaque semaine :** temps de saisie d'une course, délai avant qu'un chauffeur la prenne, part des courses non prises en 60 secondes, doubles attributions, part des claims par canal (bot, Mini App), écarts de solde avec l'ancien logiciel, coût technique par course et temps de support humain restant.
 
 **Porte G1 :** pendant deux semaines de suite, toutes les courses passent par le système, aucune double attribution, et les soldes concordent.
 
@@ -206,7 +208,7 @@ Objectif : l'agent vocal prend les commandes, d'abord la nuit et en débordement
 
 - [ ] Outils appelés par l'agent : identifier le client, calculer le prix, créer la course. L'agent n'invente jamais un prix.
 - [ ] Webhook de fin d'appel : transcription, durée, résultat, enregistrement privé.
-- [ ] Fermeture automatique pendant Shabbat et les fêtes.
+- [ ] Fermeture automatique de la ligne vocale pendant Shabbat et les fêtes (la diffusion aux chauffeurs s'arrête déjà dès la Phase 1, D-020).
 - [ ] Tableau des mesures de la voix.
 
 **Ilan**
