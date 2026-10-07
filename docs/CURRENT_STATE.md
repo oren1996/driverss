@@ -12,7 +12,7 @@
 - Décision prise : Telegram uniquement pour les chauffeurs ([D-001](DECISIONS.md)).
 - Spec v0 de la Mini App chauffeur fusionnée (PR #1, relue par Ilan). Ses décisions sont acceptées, sauf D-011 (après le prototype TMA-03) et la règle de relance de D-014.
 - Relecture critique de la documentation le 7 octobre : droits des appelants, devis, envois du bot, grand livre, concurrence et planning corrigés. Nouvelles propositions D-017 à D-021.
-- Deuxième relecture le même jour : les messages du bot sont suivis un par un et corrigés (annonces et corrections, envois « peut-être partis »), délier un chauffeur coupe l'accès de l'ancien téléphone tout de suite, les corrections du grand livre sont possibles sans réécrire l'historique, les droits SQL sont explicites. Nouvelle proposition D-022 ; D-018 à D-020 précisées. En attente de la relecture d'Ilan (PR #2).
+- Deuxième relecture le même jour : les messages du bot sont suivis un par un et corrigés (annonces et corrections, envois « peut-être partis »), délier un chauffeur coupe l'accès de l'ancien téléphone tout de suite, les corrections du grand livre sont possibles sans réécrire l'historique, les droits SQL sont explicites. Nouvelle proposition D-022 ; D-018 à D-020 précisées. Troisième relecture : l'annulation d'une course attribuée prévient toujours le chauffeur, une vérification suit toute issue incertaine d'un envoi, et aucun envoi ne commence pendant une fermeture. En attente de la relecture d'Ilan (PR #2).
 - Le dépôt GitHub est public et `main` n'est pas protégée : à régler (Oren). Seul Oren est collaborateur du dépôt : Ilan et Eitan sont à ajouter.
 
 ## Ce qui bloque

@@ -7,6 +7,8 @@
 > **7 octobre 2026 (relecture) :** tableau « Qui peut appeler quoi » ; devis identifié (B, C) ; `version` des courses ; D et R passent par une file d'envois que le bot lit (T) ; gestion des chauffeurs (S) ; `expected_version` sur G. Propositions D-017 à D-021. **À relire par Ilan ; Eitan à prévenir pour C.**
 >
 > **7 octobre 2026 (deuxième relecture) :** envois en annonces et corrections, chaque message connu corrigé, confirmation `unknown` et envois « peut-être partis » (D, R, T) ; liaisons Telegram, déliaison et nouvelle liaison contrôlée par un admin (J à O, Q, S, D-022) ; `version` dans toutes les vues (N). **À relire par Ilan.**
+>
+> **7 octobre 2026 (troisième relecture) :** l'annulation d'une course attribuée prévient toujours le chauffeur (G, R, T) ; vérification après une issue incertaine, sans promesse d'ordre que Telegram ne garantit pas ; `send_before` s'arrête avant une fermeture (T). **À relire par Ilan.**
 
 Chaque module peut changer de technologie sans casser les autres, tant que ces contrats restent stables.
 
@@ -233,7 +235,7 @@ Clore ou annuler une course.
 
 - `status` vaut `done`, `cancelled` ou `no_show`. L'acteur est déduit de la session : `actor_id` n'est plus dans le corps. Transitions autorisées : voir [`DATABASE.md`](DATABASE.md).
 - `expected_version` (recommandé) : la version que le sadran avait à l'écran. Si la course a changé depuis → `version_conflict` (409) : le dashboard relit et le sadran décide. Exemple : il voulait annuler une course libre, mais un chauffeur l'a prise entre-temps.
-- Le crédit de 7 % et la commission sont écrits au grand livre uniquement au passage à `done`. L'annulation d'une course déjà prise prévient le chauffeur : avis d'annulation (R `ride_cancelled`), envoyé aussi par précaution si son message d'attribution est peut-être parti, et signal `ride_cancelled`.
+- Le crédit de 7 % et la commission sont écrits au grand livre uniquement au passage à `done`. L'annulation d'une course déjà prise prévient toujours le chauffeur : avis d'annulation (R `ride_cancelled`), même si son message d'attribution n'est jamais parti, et signal `ride_cancelled`.
 
 ## H. `GET /rides/{ride_id}`
 
@@ -518,7 +520,7 @@ Contenu des envois créés quand une course change de statut après `posted`, qu
 | --- | --- | --- | --- |
 | `ride_assigned` | Annonce | Le chauffeur attribué, s'il a une liaison active | Nouveau message privé avec les détails de prise en charge. Seul envoi qui contient `pickup_details` |
 | `message_update` | Correction | Chaque message connu de la course dont l'état affiché n'est plus le bon : diffusion, relance et attribution, chez tous les destinataires, gagnant compris, quel que soit le canal du claim ou de l'attribution | Modifie le message `edit_message_id` selon `state`, sans bouton « אני לוקח » ni détails de prise en charge |
-| `ride_cancelled` | Correction | Le chauffeur attribué, si son message d'attribution est parti ou peut-être parti (T) | Nouveau message « הנסיעה בוטלה », qui rappelle le trajet et l'heure |
+| `ride_cancelled` | Correction | Le chauffeur attribué, à chaque annulation d'une course attribuée, qu'il ait reçu ou non le message d'attribution : il a pu l'apprendre par la Mini App, par la réponse du bot à son clic ou par un appel du sadran | Nouveau message « הנסיעה בוטלה », qui rappelle le trajet et l'heure |
 
 `state` : l'état qu'un message doit afficher, calculé par le backend au moment où le bot lit l'envoi. Le texte de chaque état est choisi par le bot, en hébreu.
 
@@ -658,10 +660,11 @@ Proposition D-019. Appelant : `dispatch/bot`, avec `x-driverss-key`. Le backend 
 
 - `action` : `send` (nouveau message) ou `edit` (modifier le message connu `edit_message_id`).
 - `payload` : D pour `ride_posted` et `ride_relaunch`, R pour les autres. Il est calculé au moment de la lecture : la file ne stocke aucun contenu.
-- Réservation : un envoi lu est réservé 60 s. Le bot ne l'envoie plus après `send_before` (45 s après la lecture), et ses appels à Telegram durent 10 s au plus : aucune tentative n'arrive chez Telegram après la fin de sa réservation. Un envoi que le bot n'a pas tenté avant `send_before` est rendu par `retry`, avec `retry_after_s: 0`.
+- Réservation : un envoi lu est réservé 60 s. `send_before` est le plus tôt de deux moments : 45 s après la lecture, ou 1 minute avant le début de la prochaine fermeture (D-020) ; la file ne remet aucun envoi dont `send_before` serait déjà passé. Le bot ne commence aucun envoi après `send_before`, et coupe ses appels à Telegram au bout de 10 s. Un envoi que le bot n'a pas tenté avant `send_before` est rendu par `retry`, avec `retry_after_s: 0`.
+- Ces délais rendent très improbable qu'une tentative arrive chez Telegram après la fin de sa réservation, mais ne le garantissent pas : un délai dépassé côté bot ne prouve pas que Telegram n'a pas traité la requête, ni qu'il ne la traitera pas plus tard. D'où la vérification après une issue incertaine (plus bas).
 - Une annonce n'est pas remise si la course a changé de `version` depuis sa création, ou si la liaison du destinataire est révoquée. Une diffusion ou une relance ne l'est pas non plus si le chauffeur est bloqué ou si l'heure de prise en charge est passée. Une attribution reste remise même si l'heure est passée : le chauffeur a besoin de ses détails.
-- Une correction n'est jamais abandonnée parce que la version a changé. Une seule `message_update` en cours par message ; elle n'est pas remise si le message affiche déjà l'état actuel (sans objet). `ride_cancelled` attend la fin de la tentative d'attribution en cours ; elle part si l'attribution est partie ou peut-être partie, et seulement dans ce cas.
-- Pendant une fermeture (Shabbat, fête), `pull` ne renvoie rien (D-020).
+- Une correction n'est jamais abandonnée parce que la version a changé. Une seule `message_update` en cours par message ; elle n'est pas remise si le message affiche déjà l'état actuel (sans objet), sauf pour une vérification. `ride_cancelled` part à chaque annulation d'une course attribuée, que le message d'attribution soit parti ou non ; il attend seulement qu'une tentative d'attribution en cours soit réglée (envoyée, abandonnée ou en échec), pour arriver après elle.
+- Pendant une fermeture (Shabbat, fête), `pull` ne renvoie rien (D-020). Grâce à la limite de `send_before`, un envoi lu juste avant ne peut pas commencer pendant la fermeture.
 
 **Confirmer** — `POST /bot-outbox/ack`, juste après la réponse de Telegram :
 
@@ -692,10 +695,17 @@ Réponse : `{ "ok": true }`.
 
 - Une absence de confirmation ne prouve jamais une absence d'envoi : une réservation expirée sans réponse compte comme `unknown`, et un envoi « peut-être parti » le reste pour toujours. Le bot ne répond `retry` ou `failed` que si Telegram a clairement refusé.
 - Après 5 tentatives sans `sent`, l'envoi passe en échec.
-- Confirmation tardive (après la fin de la réservation) : pour un nouveau message, `sent` est toujours enregistré, puisque le message existe, même si une autre tentative a été lue entre-temps. Les autres réponses d'une tentative dépassée sont ignorées : le backend recompare et corrige si besoin.
+- Confirmation tardive (après la fin de la réservation) : pour un nouveau message, `sent` est toujours enregistré, puisque le message existe, même si une autre tentative a été lue entre-temps. Pour une ancienne modification, `sent` ne change pas l'état enregistré, mais déclenche une vérification : elle a pu être appliquée après une modification plus récente. Les autres réponses d'une tentative dépassée sont ignorées.
 - Confirmer deux fois la même tentative ne change rien.
 - Limites de Telegram : moins de 30 messages par seconde au total, et au plus un par seconde au même chauffeur, modifications comprises.
 - Doublon possible : un envoi peut-être parti est renvoyé, donc un chauffeur peut exceptionnellement recevoir deux fois le même message. Accepté ; chaque copie confirmée est corrigée comme les autres.
+
+**Vérification après une issue incertaine.** Une issue est incertaine quand une tentative se termine par `unknown`, quand sa réservation expire sans réponse, ou quand arrive la confirmation tardive d'une ancienne modification. Deux minutes plus tard, le backend rétablit une fois l'état juste :
+
+- pour une modification, il remet une `message_update` avec l'état actuel du message, même si le message est censé l'afficher déjà ; Telegram répond « déjà identique » (`sent`), ou corrige le message ;
+- pour une attribution, si la course a été annulée moins de 2 minutes après la tentative incertaine, l'avis d'annulation repart une seconde fois, pour arriver après une attribution que Telegram aurait traitée en retard.
+
+Limite résiduelle : une requête que Telegram traiterait plus de 2 minutes après coup n'est pas rattrapée. Elle ne peut que changer le libellé d'un message déjà sans bouton, ou faire réapparaître une attribution déjà suivie de deux avis d'annulation. On la juge improbable ; chaque issue incertaine est comptée chaque semaine.
 
 ---
 

@@ -53,7 +53,7 @@ Spec de la Mini App : `docs/MINIAPP.md`. Frontières, auth, envois du bot, temps
 
 - Inscription : bouton de partage du contact ; vérifier que `contact.user_id` égale `from.id` ; normaliser en E.164 ; appeler Q. Sur `link_requires_admin`, dire au chauffeur d'appeler le sadran.
 - N'envoyer que ce que la file du backend contient (contrat T, D-019) : lire, envoyer, confirmer. Jamais d'envoi décidé par le bot, jamais de minuteur dans le bot : la relance vient du backend.
-- Lire peu d'envois à la fois et les envoyer aussitôt. Ne rien envoyer après `send_before` ; appels à Telegram de 10 s au plus. Un envoi non tenté à temps est rendu par `retry` avec `retry_after_s: 0`.
+- Lire peu d'envois à la fois et les envoyer aussitôt. Ne rien commencer après `send_before`, qui tient compte de la prochaine fermeture ; appels à Telegram de 10 s au plus. Un délai dépassé ne prouve pas que Telegram n'a rien fait : répondre `unknown`. Un envoi non tenté à temps est rendu par `retry` avec `retry_after_s: 0`.
 - Confirmer juste après la réponse de Telegram : `sent` avec l'identifiant du message (aussi quand Telegram répond que le message modifié est déjà identique) ; `retry` sur un refus 429, avec le délai indiqué ; `failed` sur un refus définitif (`bot_blocked`, `chat_not_found`, `message_unavailable`) ; `unknown` quand il n'y a pas de réponse claire (délai dépassé, connexion coupée, erreur 5xx). Jamais `retry` ni `failed` si Telegram n'a pas clairement refusé : le message est peut-être parti.
 - Annonces : `ride_posted` et `ride_relaunch` (D), message privé au format habituel, avec « אני לוקח » (appelle E) et « פתח » (ouvre la Mini App sur la course) ; `ride_assigned`, message privé au gagnant avec les détails.
 - Corrections : `message_update` modifie le message `edit_message_id` selon `state` (`yours`, `taken`, `cancelled`), sans bouton ni détails de prise en charge ; `ride_cancelled` envoie « הנסיעה בוטלה » au chauffeur attribué, avec le trajet et l'heure. Les textes de chaque état sont ceux du bot, en hébreu.
@@ -71,12 +71,13 @@ Ce sont des tests fonctionnels : ils seront écrits et exécutés pendant l'impl
 - Le bot redémarre au milieu d'une diffusion : seuls les envois non confirmés repartent.
 - Chauffeur qui a reçu la diffusion et la relance, course prise par un autre : ses deux messages sont corrigés ; le message du gagnant aussi, que la course ait été prise par le bot, par la Mini App ou attribuée par le sadran.
 - Course prise puis terminée pendant que le bot est arrêté : au redémarrage, les messages sont quand même corrigés.
-- **Envoi sans confirmation suivi d'une annulation :** arrêter le bot juste après l'envoi d'une attribution, avant la confirmation ; annuler la course ; redémarrer. Le chauffeur reçoit « הנסיעה בוטלה », pas une seconde attribution.
+- **Envoi sans confirmation suivi d'une annulation :** arrêter le bot juste après l'envoi d'une attribution, avant la confirmation ; annuler la course ; redémarrer. Le chauffeur reçoit « הנסיעה בוטלה », pas une seconde attribution ; 2 minutes plus tard, l'avis repart une seconde fois.
+- **Claim dans la Mini App, puis annulation avant le message d'attribution :** prendre la course dans la Mini App, la fermer, annuler avant que le bot ait lu l'attribution. Le chauffeur reçoit quand même « הנסיעה בוטלה » dans Telegram.
 - **Confirmation tardive :** retarder la confirmation d'une diffusion au-delà de 60 s pendant qu'un autre chauffeur prend la course : le message finit corrigé.
-- **Corrections reçues dans le désordre :** course prise puis annulée pendant que les corrections partent : chaque message finit sur l'état final, « בוטלה ».
-- Le bot n'envoie rien après `send_before` ; sur un délai dépassé, il répond `unknown`, jamais `retry`.
+- **Corrections reçues dans le désordre :** course prise puis annulée pendant que les corrections partent : chaque message finit sur l'état final, « בוטלה ». Si une ancienne modification arrive en retard, la vérification remet l'état final 2 minutes plus tard.
+- Le bot ne commence aucun envoi après `send_before` ; sur un délai dépassé, il répond `unknown`, jamais `retry`.
 - Refus 429 de Telegram : l'envoi attend le délai indiqué, puis repart.
-- **Fermeture Shabbat :** rien ne part pendant la fermeture ; à la sortie, les corrections partent.
+- **Fermeture Shabbat :** rien ne part pendant la fermeture, pas même un envoi lu juste avant ; à la sortie, les corrections partent.
 - **Tentative de réassociation de l'ancien compte :** après une déliaison `compromised`, le partage du contact depuis l'ancien compte reçoit « appelle le sadran » ; son bouton « אני לוקח » ne prend plus aucune course.
 - Aucun numéro ni nom de client dans les messages de diffusion, les messages modifiés, la liste de la Mini App ou les signaux temps réel.
 - Dashboard : un `dispatcher` ne peut pas gérer les chauffeurs ni corriger le grand livre ; un devis expiré est refusé ; une annulation sur une course modifiée entre-temps est refusée (`version_conflict`) ; un signalement reste visible jusqu'à ce qu'il soit traité.
