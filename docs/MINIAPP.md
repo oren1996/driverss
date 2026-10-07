@@ -86,7 +86,7 @@ Ce qu'un chauffeur peut voir avant et après le claim est fixé par le backend :
 | État | Quand | Ce qu'on affiche |
 | --- | --- | --- |
 | Chargement | Ouverture, échange de l'initData | Squelette de la liste |
-| Non inscrit | `driver_not_linked` | « עדיין לא נרשמת » + bouton vers le bot |
+| Non inscrit | `driver_not_linked` : jamais lié, ou délié (D-022), même en cours d'utilisation | « עדיין לא נרשמת » + bouton vers le bot ; la session est oubliée |
 | Bloqué | `driver_blocked` | « החשבון מושהה » + « התקשר לסדרן » |
 | Session à refaire | `init_data_expired`, `invalid_init_data`, rafraîchissement refusé | « סגור ופתח מחדש » |
 | Hors ligne | Pas de réseau | Bandeau « אין חיבור לאינטרנט » ; bouton « אני לוקח » désactivé |
@@ -148,7 +148,7 @@ Ce qu'un chauffeur peut voir avant et après le claim est fixé par le backend :
 | La Mini App n'envoie aucune notification : c'est toujours le bot qui prévient | On garde le bot, même quand la Mini App existe |
 | Demande → attente d'une décision du sadran : 2 à 6 minutes, parfois sans réponse | Notre claim instantané est un avantage (D-013) |
 | Les détails de la course arrivent à la main, par WhatsApp, envoyés par le sadran | Chez nous, le backend envoie les détails au gagnant automatiquement, dans Telegram |
-| Le message du bot n'est pas mis à jour quand la course est prise : des chauffeurs cliquent sur des courses parties et reçoivent une erreur | Notre bot marque « נלקחה » sur les messages des autres à la réception de R ; c'est obligatoire |
+| Le message du bot n'est pas mis à jour quand la course est prise : des chauffeurs cliquent sur des courses parties et reçoivent une erreur | Notre bot corrige chaque message de la course, relance et message du gagnant compris (corrections R) ; c'est obligatoire |
 | 120 à 240 messages par heure pour un chauffeur | À notre volume, c'est gérable ; mais le filtrage par disponibilité deviendra important quand le volume grandira |
 | Inscription avec validation humaine | Notre pré-inscription par le sadran est le bon modèle |
 | Disponibilité par trajets et rayons, avec expiration | Phase 1 : un interrupteur avec fin optionnelle ; zones et rayon plus tard |
@@ -158,17 +158,16 @@ Ce qu'un chauffeur peut voir avant et après le claim est fixé par le backend :
 
 ## Questions ouvertes
 
-Liste unique des questions sur la Mini App. Tant qu'une question n'est pas tranchée, on applique la proposition pour la Phase 1. Une réponse devient une entrée de [`DECISIONS.md`](DECISIONS.md), puis la ligne est retirée d'ici.
+Liste unique des questions sur la Mini App. Tant qu'une question n'est pas tranchée, la proposition sert d'hypothèse de travail pour concevoir ; elle doit être tranchée avant d'être codée. Une réponse devient une entrée de [`DECISIONS.md`](DECISIONS.md), puis la ligne est retirée d'ici.
 
 | # | Question | Qui tranche | Proposition Phase 1 | Bloque |
 | --- | --- | --- | --- | --- |
 | Q1 | La Mini App entre-t-elle vraiment en Phase 1, vu la charge d'Oren et d'Ilan ? | Tous | Oui, après le bouton du bot ; la porte G1 n'en dépend pas (D-009) | Planning de la Phase 1 |
-| Q2 | Notifier en message privé plutôt que dans un groupe ? Relancer à 60 s seulement les chauffeurs disponibles, ou tous les inscrits ? | Ilan, Papa | Message privé ; relance aux chauffeurs disponibles (D-014) | TMA-11 |
+| Q2 | Notifier en message privé plutôt que dans un groupe ? Relancer à 60 s seulement les chauffeurs disponibles, ou tous les inscrits ? | Ilan, Papa | Message privé ; relance aux chauffeurs disponibles (D-014) | SOC-07, SOC-08 |
 | Q3 | Le chauffeur clôt-il lui-même sa course (terminée, client absent) depuis la Mini App ? | Oren, avec Yossef | Non : le sadran clôt, car c'est ce qui écrit au grand livre. Le concurrent laisse le chauffeur clore ; à rouvrir après G1 | — |
-| Q4 | Le chauffeur peut-il se désister ? Faut-il une transition `claimed → posted` (course remise en diffusion par le sadran) ? | Oren, Ilan | Non : il appelle le sadran, qui annule et recrée la course | — |
+| Q4 | Le chauffeur peut-il se désister ? Faut-il une transition `claimed → posted` (course remise en diffusion par le sadran) ? | Oren, Ilan | Non : il appelle le sadran, qui annule et recrée la course ; la nouvelle course garde le lien `replaces_ride_id`, pour que les statistiques comptent un désistement | — |
 | Q5 | Un chauffeur peut-il avoir plusieurs courses `claimed` en même temps (courses réservées à l'avance) ? | Papa, Oren | Pas de limite | — |
-| Q6 | Il manque une table des sadranim et un contrat de gestion des chauffeurs (pré-inscription, blocage avec révocation des sessions, déliaison Telegram) | Oren, avec Ilan | À écrire avant TMA-05 | TMA-05 |
-| Q7 | Quel domaine pour héberger la Mini App, et faut-il le faire autoriser par les fournisseurs de filtres des téléphones casher ? | Ilan, Papa | Domaine stable dédié ; réponse attendue du test TMA-02 | TMA-02, TMA-13 |
-| Q8 | Le message privé du bot au gagnant (téléphone du client) reste dans l'historique Telegram : faut-il le masquer après la clôture ? | Eitan (avocat, amendement 13) | Le garder en Phase 1, en attendant l'avis | Pilote |
+| Q7 | Quel domaine pour héberger la Mini App, et faut-il le faire autoriser par les fournisseurs de filtres des téléphones casher ? | Ilan, Papa | Domaine stable dédié ; réponse attendue du test TMA-02 | TMA-02, TMA-11 |
+| Q8 | Le message privé du bot au gagnant (téléphone du client) reste dans l'historique Telegram : faut-il le masquer après la clôture ? | Eitan (avocat, amendement 13) | Le garder en Phase 1, en attendant l'avis. Si la course est annulée, sa correction retire déjà l'adresse et le téléphone (R) | Pilote |
 | Q9 | Formulation des boutons et ton (masculin ou neutre) | Papa, avec les 10 testeurs | Textes du tableau « Textes clés » | — |
 | Q10 | Demander au gagnant, juste après le claim, dans combien de minutes il sera à l'adresse (avec un lien Waze) ? Utile au sadran, et plus tard pour informer le client | Ilan, Papa | Pas en Phase 1 ; si oui, une question **après** le claim, pour ne jamais le ralentir | — |
