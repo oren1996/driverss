@@ -12,7 +12,8 @@
 - Décision prise : Telegram uniquement pour les chauffeurs ([D-001](DECISIONS.md)).
 - Spec v0 de la Mini App chauffeur fusionnée (PR #1, relue par Ilan). Ses décisions sont acceptées, sauf D-011 (après le prototype TMA-03) et la règle de relance de D-014.
 - Relecture critique de la documentation le 7 octobre : droits des appelants, devis, envois du bot, grand livre, concurrence et planning corrigés. Nouvelles propositions D-017 à D-021.
-- Le dépôt GitHub est public et `main` n'est pas protégée : à régler (Oren).
+- Deuxième relecture le même jour : les messages du bot sont suivis un par un et corrigés (annonces et corrections, envois « peut-être partis »), délier un chauffeur coupe l'accès de l'ancien téléphone tout de suite, les corrections du grand livre sont possibles sans réécrire l'historique, les droits SQL sont explicites. Nouvelle proposition D-022 ; D-018 à D-020 précisées. En attente de la relecture d'Ilan (PR #2).
+- Le dépôt GitHub est public et `main` n'est pas protégée : à régler (Oren). Seul Oren est collaborateur du dépôt : Ilan et Eitan sont à ajouter.
 
 ## Ce qui bloque
 
@@ -36,13 +37,15 @@
 - File des envois du bot (D-019) : Oren et Ilan.
 - Aucun envoi pendant Shabbat et les fêtes (D-020) : Papa et Oren.
 - Devis identifié et version des courses (D-021) : Oren ; Eitan à prévenir (la voix crée aussi des courses).
+- Liaisons Telegram, déliaison et procédure après un vol (D-022) : Oren et Ilan.
+- Course close par erreur : corriger aussi son statut, ou seulement le grand livre ? Avec Yossef, avant le pilote.
 - Questions sur la Mini App : « Questions ouvertes » dans [`MINIAPP.md`](MINIAPP.md).
 
 ## Prochaines étapes
 
-1. Passer le dépôt GitHub en privé (Oren).
+1. Ajouter Ilan et Eitan comme collaborateurs du dépôt GitHub, puis le passer en privé (Oren).
 2. Réunion de lancement avec Yossef (Papa).
 3. Trouver l'avocat et lui envoyer les questions (Eitan).
 4. Recevoir l'export et l'analyser, dont la règle d'arrondi (Papa, puis Oren).
 5. Test Telegram avec 10 chauffeurs, y compris l'ouverture d'une Mini App de démonstration (Ilan, avec Papa).
-6. Trancher D-017 à D-021, puis prototype jetable d'authentification et de temps réel (Oren, avec Ilan).
+6. Relecture de la PR #2 par Ilan, puis trancher D-017 à D-022 ; ensuite, prototype jetable d'authentification et de temps réel (Oren, avec Ilan).

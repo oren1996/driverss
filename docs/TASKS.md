@@ -10,7 +10,7 @@ Deux pistes portent un identifiant, parce que leurs tâches dépendent les unes 
 ## Maintenant — Phase 0 (semaines 1 à 3)
 
 - [ ] Passer le dépôt GitHub en privé ; décider s'il faut GitHub Pro pour protéger `main` — Oren
-- [ ] Renseigner les noms GitHub d'Eitan et d'Ilan dans `.github/CODEOWNERS` — Oren
+- [ ] Ajouter Eitan et Ilan comme collaborateurs du dépôt GitHub (indispensable une fois le dépôt privé, et pour qu'Ilan puisse être désigné relecteur), puis renseigner leurs noms dans `.github/CODEOWNERS` — Oren
 - [ ] Présenter le plan à Yossef, réunion de lancement à cinq — Papa
 - [ ] Obtenir l'export du logiciel, 20 enregistrements d'appels, 50 messages de courses, la liste des chauffeurs actifs — Papa
 - [ ] Repérer 10 chauffeurs testeurs et noter leur téléphone — Papa
@@ -23,7 +23,7 @@ Deux pistes portent un identifiant, parce que leurs tâches dépendent les unes 
 - [ ] Décider la source de vérité des soldes de 7 % — Oren
 - [ ] Décider le modèle de prix, avec Papa — Oren
 - [ ] Finaliser le schéma v0 (`DATABASE.md`) et les contrats v0 (`API_CONTRACTS.md`) — Oren
-- [ ] Trancher les décisions proposées D-017 à D-021 (relecture du 7 octobre) — Oren, Ilan ; avec Papa (D-020) et Yossef (D-018) ; Eitan à prévenir pour le devis (D-021)
+- [ ] Trancher les décisions proposées D-017 à D-022 (relectures du 7 octobre) — Oren, Ilan ; avec Papa (D-020) et Yossef (D-018) ; Eitan à prévenir pour le devis (D-021)
 - [ ] Vérifier que l'exclusivité ne bloque pas le projet de colis d'Oren — Oren
 - [ ] Observer un sadran sur place et écrire le déroulé — Ilan
 - [ ] Collecter les codes et formats de messages des chauffeurs — Ilan
@@ -43,19 +43,19 @@ Deux pistes portent un identifiant, parce que leurs tâches dépendent les unes 
 
 ### Socle — dans l'ordre (le chemin de la porte G1)
 
-- [ ] SOC-01 · Schéma : tables (dont `dispatchers`, `quotes`, `notifications`, `driver_events`), RLS par station avec fonctions d'aide, `station_id` partout, `rides.version` ; fonction `claim_ride` et ses tests de concurrence — Oren
+- [ ] SOC-01 · Schéma : tables (dont `dispatchers`, `quotes`, `driver_links`, `notifications`, `bot_messages`, `dispatcher_alerts`, `driver_events`), RLS par station avec fonctions d'aide, droits explicites de chaque fonction et contrôle des droits effectifs, `station_id` partout, `rides.version` ; fonction `claim_ride` et ses tests de concurrence — Oren
 - [ ] SOC-02 · Import des données de Yossef : lieux, prix, clients, chauffeurs pré-inscrits, soldes selon la décision de Phase 0 — Oren (après SOC-01)
 - [ ] SOC-03 · Authentification et droits : fonction commune (modules, sadranim, chauffeurs), tableau « Qui peut appeler quoi » appliqué et testé — Oren (après SOC-01)
 - [ ] SOC-04 · Devis et création : `get-quote` (B) avec `quote_id`, `create-ride` (C) — Oren (après SOC-03)
 - [ ] SOC-05 · Claim et statuts : `claim-ride` (E), `assign-ride` (F), `update-ride-status` (G) avec `expected_version`, `GET /rides/{id}` (H) — Oren (après SOC-03)
-- [ ] SOC-06 · Gestion des chauffeurs : `manage-driver` (S) et `link-driver-telegram` (Q) — Oren (après SOC-03)
-- [ ] SOC-07 · File des envois : envois créés avec chaque transition, réveil du bot, `bot-outbox` (T), relance planifiée à 60 s avec destinataires recalculés — Oren (après SOC-05)
-- [ ] SOC-08 · Bot : inscription par partage du contact (Q), envoi des courses depuis la file au format habituel, limites de Telegram, bouton « אני לוקח » (E), message au gagnant et « נלקחה » aux autres — Ilan (après SOC-06, SOC-07)
-- [ ] SOC-09 · Dashboard du sadran (mobile, hébreu, droite à gauche) : connexion, saisie (B, C), suivi en direct, attribution (F), clôture (G), courses relancées encore libres en évidence, gestion des chauffeurs (S) — Ilan (après SOC-04 à SOC-06)
-- [ ] SOC-10 · Grand livre : écritures au passage à `done`, règle d'arrondi (D-018), une seule écriture par course et par compte — Oren (après SOC-05 ; D-018 tranchée)
-- [ ] SOC-11 · Fermetures : aucune diffusion ni relance pendant Shabbat et les fêtes (D-020) — Oren, Ilan (après SOC-07)
+- [ ] SOC-06 · Chauffeurs et liaisons Telegram : `manage-driver` (S, dont déliaison avec sa raison et `allow_relink`) et `link-driver-telegram` (Q) ; une identité Supabase par liaison ; procédure « téléphone perdu ou volé » (D-022) — Oren (après SOC-03)
+- [ ] SOC-07 · File des envois : annonces et corrections créées avec chaque transition, messages connus, envois peut-être partis et confirmations tardives, signalements, réveil du bot, `bot-outbox` (T), relance planifiée à 60 s qui verrouille la course comme une transition — Oren (après SOC-05, SOC-06)
+- [ ] SOC-08 · Bot : inscription par partage du contact (Q), annonces depuis la file au format habituel, corrections des messages et avis d'annulation, confirmations `sent` / `retry` / `failed` / `unknown`, limites de Telegram, bouton « אני לוקח » (E) et correction au clic en secours — Ilan (après SOC-06, SOC-07)
+- [ ] SOC-09 · Dashboard du sadran (mobile, hébreu, droite à gauche) : connexion, saisie (B, C), suivi en direct, attribution (F), clôture (G), courses relancées encore libres en évidence, signalements à traiter, gestion des chauffeurs et des liaisons (S) — Ilan (après SOC-04 à SOC-06 ; signalements après SOC-07)
+- [ ] SOC-10 · Grand livre : écritures au passage à `done`, règle d'arrondi (D-018), une seule écriture par course et par compte ; corrections par un `admin` (inverse et `adjustment`, rejouables sans double effet), avec leur contrat et leur écran à écrire — Oren ; écran : Ilan (après SOC-05, SOC-09 ; D-018 tranchée)
+- [ ] SOC-11 · Fermetures : aucun envoi ni relance pendant Shabbat et les fêtes ; corrections gardées et envoyées à la réouverture (D-020) — Oren, Ilan (après SOC-07)
 - [ ] SOC-12 · Procédure écrite de retour au manuel si le backend ou le bot tombe ; essai à blanc avec un sadran — Ilan, Papa
-- [ ] SOC-13 · Test de bout en bout du parcours : saisie → devis → diffusion → deux claims simultanés → clôture → solde ; données finales correctes en base — Ilan, Oren (après SOC-08 à SOC-11)
+- [ ] SOC-13 · Test de bout en bout du parcours : saisie → devis → diffusion → deux claims simultanés → clôture → solde, plus les scénarios de validation des envois, des liaisons et du grand livre (`backend/AGENTS.md`, `dispatch/AGENTS.md`) ; données finales correctes en base — Ilan, Oren (après SOC-08 à SOC-11)
 
 ### Autres tâches de la Phase 1
 
@@ -71,7 +71,7 @@ La porte G1 dépend du socle (SOC-01 à SOC-13), pas de la Mini App : le bouton 
 
 ### Mini App chauffeur — Phase 1, après le socle
 
-- [ ] TMA-04 · `driver-auth-telegram` (J) et `driver-me` (K) — Oren (après TMA-03, SOC-03, SOC-06)
+- [ ] TMA-04 · `driver-auth-telegram` (J) et `driver-me` (K), liaison active vérifiée à chaque appel (D-022) — Oren (après TMA-03, SOC-03, SOC-06)
 - [ ] TMA-05 · Squelette de la Mini App contre les mocks : session, profil, états, hébreu de droite à gauche — Ilan (après SOC-08 : le bot d'abord)
 - [ ] TMA-06 · Courses disponibles et détail : `driver-rides` (M, N) côté backend ; écrans de la Mini App — Oren, Ilan (après TMA-04, TMA-05)
 - [ ] TMA-07 · Claim depuis la Mini App : `driver-claim-ride` (O) ; écrans gagnant et perdant — Oren, Ilan (après TMA-06, SOC-05)
@@ -95,3 +95,4 @@ La porte G1 dépend du socle (SOC-01 à SOC-13), pas de la Mini App : le bouton 
 - [x] Création du dépôt et de la documentation v0 — Oren
 - [x] Spec v0 de la Mini App chauffeur : architecture, contrats J à R, schéma, décisions D-009 à D-016 — Oren
 - [x] Relecture critique de la documentation et corrections : droits des appelants, devis, envois du bot, grand livre, concurrence, planning (D-017 à D-021 proposées) — Oren
+- [x] Deuxième relecture et corrections : annonces et corrections des messages du bot, envois peut-être partis, liaisons Telegram et procédure après un vol, corrections du grand livre, droits SQL, `version` dans toutes les vues (D-022 proposée ; D-018 à D-020 précisées) — Oren

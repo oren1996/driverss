@@ -157,18 +157,18 @@ Proposition à valider avec Yossef : ni crédit de 7 % ni commission pour une co
 
 - [ ] Créer le schéma Supabase : stations, clients, lieux et alias, prix, institutions, chauffeurs, courses, événements de course, grand livre des 7 %. `station_id` dans chaque table, règles d'accès (RLS).
 - [ ] Importer les données de Yossef.
-- [ ] Endpoints : devis identifié et création de course (D-021), claim atomique, changement de statut (terminée, annulée, client absent), gestion des chauffeurs ; droits de chaque appelant, modules, sadranim et chauffeurs (D-017).
-- [ ] File des envois du bot et relance planifiée à 60 s (D-019) ; aucune diffusion pendant Shabbat et les fêtes (D-020).
+- [ ] Endpoints : devis identifié et création de course (D-021), claim atomique, changement de statut (terminée, annulée, client absent), gestion des chauffeurs et de leurs liaisons Telegram (D-022) ; droits de chaque appelant, modules, sadranim et chauffeurs (D-017).
+- [ ] File des envois du bot : annonces, et corrections de chaque message déjà envoyé, y compris quand une confirmation se perd ; relance planifiée à 60 s (D-019) ; aucun envoi pendant Shabbat et les fêtes, corrections envoyées à la réouverture (D-020).
 - [ ] Contrats chauffeur ([`MINIAPP.md`](MINIAPP.md), contrats J à P) : inscription Telegram, authentification de la Mini App, lecture des courses, claim, disponibilité, signaux temps réel. L'éligibilité (qui est notifié, qui peut prendre) est calculée par le backend.
-- [ ] Créditer les 7 % et compter la commission uniquement au statut « terminée ».
+- [ ] Créditer les 7 % et compter la commission uniquement au statut « terminée » ; corrections par un `admin`, sans jamais réécrire l'historique (D-018).
 - [ ] Brancher la synchro avec le logiciel de Yossef, selon la décision de la Phase 0.
 - [ ] Sécurité : secrets côté serveur uniquement, signature des webhooks, pas de numéro de client dans un message vu par plusieurs chauffeurs.
 - [ ] Relire chaque modification d'Ilan avant fusion.
 
 **Ilan**
 
-- [ ] Dashboard du sadran, sur mobile et en hébreu (droite à gauche) : formulaire de saisie, courses en direct, chauffeurs, statuts.
-- [ ] Bot Telegram : inscription des chauffeurs par partage du contact, envoi en message privé des courses que le backend dépose dans la file des envois, au format qu'ils utilisent déjà, bouton « je prends » qui appelle le claim d'Oren, message privé au gagnant.
+- [ ] Dashboard du sadran, sur mobile et en hébreu (droite à gauche) : formulaire de saisie, courses en direct, chauffeurs, statuts, signalements à traiter.
+- [ ] Bot Telegram : inscription des chauffeurs par partage du contact, envoi en message privé des courses que le backend dépose dans la file des envois, au format qu'ils utilisent déjà, bouton « je prends » qui appelle le claim d'Oren, message privé au gagnant, correction de chaque message de la course et avis d'annulation.
 - [ ] Repli : course non prise en 60 secondes, le backend la relance aux chauffeurs disponibles et elle est surlignée dans le dashboard pour que le sadran l'attribue à la main.
 - [ ] Procédure écrite de retour au manuel si le backend ou le bot tombe, avec Papa.
 - [ ] Mini App chauffeur ([`MINIAPP.md`](MINIAPP.md)) : courses disponibles en direct, claim, mes courses, disponibilité. Après le bouton du bot : la porte G1 n'en dépend pas.
@@ -187,7 +187,7 @@ Proposition à valider avec Yossef : ni crédit de 7 % ni commission pour une co
 - [ ] Faire remonter chaque semaine les problèmes du terrain.
 - [ ] Gérer les chauffeurs réticents.
 
-**Ce qu'on mesure chaque semaine :** temps de saisie d'une course, délai avant qu'un chauffeur la prenne, part des courses non prises en 60 secondes, doubles attributions, part des claims par canal (bot, Mini App), écarts de solde avec l'ancien logiciel, coût technique par course et temps de support humain restant.
+**Ce qu'on mesure chaque semaine :** temps de saisie d'une course, délai avant qu'un chauffeur la prenne, part des courses non prises en 60 secondes, doubles attributions, part des claims par canal (bot, Mini App), envois échoués ou peut-être partis, écarts de solde avec l'ancien logiciel, coût technique par course et temps de support humain restant.
 
 **Porte G1 :** pendant deux semaines de suite, toutes les courses passent par le système, aucune double attribution, et les soldes concordent.
 

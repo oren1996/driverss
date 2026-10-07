@@ -89,7 +89,7 @@ Le bot et la Mini App se complètent ; en Phase 1, le bot est le canal principal
 
 **Le backend possède :**
 
-- la validation de l'authentification : initData, sessions, révocation ;
+- la validation de l'authentification : initData, liaisons Telegram, sessions, révocation ;
 - les droits : quel appelant peut faire quoi, dans quelle station (tableau « Qui peut appeler quoi » dans [`API_CONTRACTS.md`](API_CONTRACTS.md)) ;
 - la vérité des courses et toutes les transitions de statut ;
 - l'éligibilité : qui est notifié, qui voit une course, qui peut la prendre ;
@@ -126,9 +126,9 @@ sequenceDiagram
         B-->>M: claimed ou already_taken
     end
     Note over B: fonction claim_ride<br/>posted → claimed, un seul gagnant
-    B->>T: réveil, envois « prise » prêts
+    B->>T: réveil, attribution et corrections prêtes
     T->>B: lit la file des envois
-    T->>C: détails au gagnant, « prise » aux autres
+    T->>C: détails au gagnant, messages de la course corrigés
     B-)M: signaux ride_unavailable et ride_assigned
     B-->>D: statut en direct
 ```
@@ -149,7 +149,7 @@ Disponible = `is_available` et `available_until` non dépassé ([`DATABASE.md`](
 
 ## Envois du bot : fiabilité
 
-Le bot est le canal principal (D-009) : ses envois doivent survivre à une panne, partir dans le bon ordre et respecter les limites de Telegram. Proposition D-019, à valider par Oren et Ilan.
+Le bot est le canal principal (D-009) : ses envois doivent survivre à une panne, ne jamais laisser un chauffeur sur une information fausse sans la corriger, et respecter les limites de Telegram. Proposition D-019, à valider par Oren et Ilan. Contrats : D, R et T dans [`API_CONTRACTS.md`](API_CONTRACTS.md).
 
 ```mermaid
 sequenceDiagram
@@ -158,29 +158,70 @@ sequenceDiagram
     participant T as Bot
     actor C as Chauffeurs
 
-    B->>F: changement de statut et un envoi par destinataire, même transaction
+    B->>F: changement de statut, annonces et corrections, même transaction
     B-)T: réveil sans données, et régulièrement par sécurité
     T->>F: bot-outbox pull
-    F-->>T: envois à jour, réservés 60 s
+    F-->>T: envois à jour, contenu calculé à la lecture, réservés 60 s
     T->>C: messages Telegram, dans les limites de Telegram
-    T->>F: bot-outbox ack, avec l'identifiant de chaque message
+    T->>F: bot-outbox ack (sent, retry, failed ou unknown)
 ```
+
+Deux familles d'envois :
+
+- une **annonce** apporte une nouveauté par un nouveau message : diffusion, relance, attribution au gagnant. Périmée avant que le bot la lise, elle est abandonnée ;
+- une **correction** remet à jour ce que le chauffeur a déjà reçu : modification d'un message connu, avis d'annulation. Elle n'est jamais abandonnée parce que la course a changé : son contenu est calculé par le backend au moment où le bot la lit, selon l'état actuel.
 
 | Règle | Comment |
 | --- | --- |
-| Rien ne se perd | Les envois sont créés dans la même transaction que le changement de statut. Un envoi non confirmé en 60 s redevient disponible : si le bot redémarre au milieu d'une diffusion, seuls les envois non confirmés repartent. |
-| Suivi par destinataire | Un envoi par chauffeur, avec son état (en attente, envoyé, échec) et l'identifiant du message Telegram, pour le modifier ensuite (« נלקחה »). |
-| Jamais dans le désordre | Chaque course porte une `version`, +1 à chaque changement de statut. Le backend ne remet jamais un envoi dont la version est dépassée : un « הנסיעה שלך! » ne part jamais après une annulation, et une course déjà prise n'est plus diffusée. |
-| Relance à 60 s | Tâche planifiée du backend, pas un minuteur du bot, qui se perdrait au redémarrage. Les destinataires sont recalculés à ce moment-là : un chauffeur bloqué ou devenu indisponible entre-temps n'est pas relancé. Une seule relance par course. |
-| Limites de Telegram | Moins de 30 messages par seconde au total, au plus un par seconde au même chauffeur. Sur un refus 429, l'envoi repart après le délai indiqué par Telegram ; après 5 échecs, il est abandonné et signalé au sadran. |
-| Doublon rare | Si le bot tombe entre l'envoi et la confirmation, l'envoi repart : un chauffeur peut exceptionnellement recevoir deux fois le même message. Accepté. |
+| Rien ne se perd | Les envois sont créés dans la même transaction que le changement qui les rend nécessaires. Un envoi lu reste réservé 60 s ; sans réponse, il revient dans la file. Si le bot redémarre au milieu d'une diffusion, seuls les envois non confirmés repartent. |
+| Chaque message est suivi | Un message dont le bot confirme l'envoi devient un **message connu** (`bot_messages`), avec l'état qu'il affiche. À chaque changement de statut, le backend crée une correction pour chaque message connu de la course qui n'affiche plus le bon état : diffusion et relance, chez tous les destinataires, gagnant compris, et le message d'attribution si la course est annulée. Quel que soit le canal du claim ou de l'attribution : bot, Mini App ou dashboard. |
+| Une absence de confirmation ne prouve rien | Telegram peut avoir reçu le message alors que le bot tombe avant de confirmer. Un envoi lu et jamais confirmé (réponse `unknown`, ou réservation expirée) est **peut-être parti**, pour toujours. |
+| Attribution peut-être partie, puis annulation | L'avis d'annulation attend la fin de la tentative d'attribution en cours, puis part si l'attribution est partie ou peut-être partie. Il n'est omis que si l'attribution n'est certainement jamais partie : jamais lue par le bot, ou refusée par Telegram à chaque tentative. S'il ne peut pas partir (liaison révoquée, bot bloqué, échecs répétés), la course est signalée au sadran, qui appelle le chauffeur. Prix assumé : un chauffeur peut recevoir un avis d'annulation pour une attribution qu'il n'a jamais vue ; l'avis rappelle le trajet et l'heure. |
+| Confirmation tardive | Une confirmation `sent` d'un nouveau message, arrivée après la fin de sa réservation, est toujours enregistrée : le message existe. Le backend le compare aussitôt à l'état actuel de la course et le corrige si besoin. Les autres réponses d'une tentative dépassée sont ignorées. |
+| Ordre des corrections | Une seule correction en cours par message. Le bot n'envoie rien après `send_before`, avec des appels à Telegram de 10 s au plus : aucune tentative n'arrive après la fin de sa réservation. Après chaque confirmation, le backend recompare l'état affiché à l'état actuel et crée une nouvelle correction s'ils diffèrent ; l'état enregistré d'un message ne recule jamais. Une correction ancienne ne peut donc pas remplacer durablement une plus récente. |
+| Relance | Tâche planifiée du backend à 60 s, pas un minuteur du bot, qui se perdrait au redémarrage. Elle verrouille la course comme une transition : requête conditionnelle (encore `posted`, pas encore relancée), puis, dans la même transaction, l'événement `relaunched` et les annonces de relance. Un claim simultané attend ce verrou : passé avant, il empêche la relance ; passé après, il fait corriger chaque message de relance confirmé. Destinataires recalculés à ce moment-là (un chauffeur bloqué ou devenu indisponible n'est pas relancé), sauf ceux dont la diffusion n'est pas encore partie. Une seule relance par course. |
+| Limites de Telegram | Moins de 30 messages par seconde au total, au plus un par seconde au même chauffeur, modifications comprises. Sur un refus 429, réponse `retry` avec le délai indiqué par Telegram ; après 5 tentatives sans succès, l'envoi passe en échec. |
+| Limite acceptée | Un message parti dont la confirmation n'arrive jamais a un identifiant inconnu : le backend ne peut pas le corriger. Quand un chauffeur appuie sur son bouton, le bot affiche la réponse du backend et corrige ce message-là. C'est un secours, qui ne couvre pas un chauffeur qui ne clique pas. Cas rare (le bot doit tomber entre la réponse de Telegram et sa confirmation), compté chaque semaine. |
+
+Le cas qui justifie l'avis par précaution : Telegram a reçu l'attribution, mais le bot est tombé avant de la confirmer.
+
+```mermaid
+sequenceDiagram
+    participant B as Backend
+    participant T as Bot
+    actor C as Chauffeur attribué
+    actor S as Sadran
+
+    T->>B: bot-outbox pull
+    B-->>T: attribution, réservée 60 s
+    T->>C: message d'attribution, bien reçu
+    Note over T: le bot tombe avant de confirmer
+    S->>B: annule la course
+    Note over B: avis d'annulation créé,<br/>il attend la fin de la tentative
+    Note over B: 60 s sans confirmation,<br/>attribution peut-être partie
+    T->>B: bot-outbox pull, après redémarrage
+    B-->>T: avis d'annulation, sans renvoyer l'attribution
+    T->>C: avis d'annulation, avec le trajet et l'heure
+    T->>B: bot-outbox ack sent
+```
+
+**Échecs et signalements.** Les signalements (table `dispatcher_alerts`) restent visibles dans le dashboard jusqu'à ce qu'un sadran les traite.
+
+| Cas | Annonce | Correction |
+| --- | --- | --- |
+| La course a changé avant la lecture | Abandonnée. Si c'est une attribution peut-être partie et que la course est annulée, l'avis d'annulation part | Gardée ; contenu recalculé |
+| Fermeture (Shabbat, fête) | Gardée ; à la réouverture, abandonnée si la course a changé, ou, pour une diffusion ou une relance, si l'heure de prise en charge est passée | Gardée ; part à la réouverture avec l'état du moment |
+| Liaison révoquée | Abandonnée ; une attribution non remise est signalée | Abandonnée ; un avis d'annulation non remis est signalé |
+| Message introuvable ou plus modifiable | — | Échec, sans signalement : il n'y a plus rien à corriger chez le chauffeur |
+| Le chauffeur a bloqué le bot | Échec ; le chauffeur est signalé une fois, et une attribution non remise aussi | Échec ; un avis d'annulation non remis est signalé |
+| 5 tentatives sans succès | Échec ; une attribution non remise est signalée | Échec ; un avis d'annulation non remis est signalé |
 
 Écartée : garder l'appel direct du backend vers le bot et donner au bot sa propre mémoire des envois. C'était plus de logique dans le bot, et une exception à la règle d'or 1.
 
 ## Fermetures et pannes
 
-- **Shabbat et fêtes (D-020, proposée) :** pendant une fermeture (table `closures`), aucun envoi ni relance ; la file reste vide pour le bot. Les envois en attente à l'entrée sont réévalués à la sortie, et les envois dépassés sont abandonnés. Avant l'entrée, le dashboard signale les courses encore libres. Dès la Phase 1, pas seulement pour la voix.
-- **Panne du backend ou du bot :** les sadranim reprennent à la main, selon une procédure écrite (tâche SOC-12). À la reprise, la file repart d'elle-même, sans renvoyer les envois dépassés.
+- **Shabbat et fêtes (D-020, proposée) :** pendant une fermeture (table `closures`), rien ne part et aucune relance n'a lieu : la file ne remet rien au bot. Les envois créés ou en attente sont gardés, corrections comprises, et réévalués à la réouverture : les corrections partent avec l'état du moment ; une annonce périmée est abandonnée (course changée ; pour une diffusion ou une relance, aussi heure de prise en charge passée) ; une relance due est recalculée. Avant l'entrée, le dashboard signale les courses encore libres. Dès la Phase 1, pas seulement pour la voix.
+- **Panne du backend ou du bot :** les sadranim reprennent à la main, selon une procédure écrite (tâche SOC-12). À la reprise, la file repart d'elle-même : les annonces périmées sont abandonnées, les corrections partent.
 
 ## Authentification des chauffeurs (Mini App)
 
@@ -201,11 +242,11 @@ sequenceDiagram
 
     M->>A: init_data brut, une fois à l'ouverture
     A->>A: vérifie la signature et auth_date ≤ 5 min
-    A->>DB: chauffeur par station + telegram_user_id
-    alt inconnu ou bloqué
+    A->>DB: liaison active par station + telegram_user_id
+    alt pas de liaison active, ou chauffeur bloqué
         A-->>M: driver_not_linked ou driver_blocked
     else actif
-        A->>SA: utilisateur lié au chauffeur, créé si besoin
+        A->>SA: identité de cette liaison, créée à sa première connexion
         SA-->>A: session courte
         A-->>M: access_token, refresh_token, profil
     end
@@ -216,15 +257,16 @@ sequenceDiagram
 | --- | --- |
 | Qui valide | Uniquement `driver-auth-telegram`, côté backend. Vérification du `hash` selon la documentation Telegram (HMAC-SHA256, clé dérivée du token du bot de la station), comparaison en temps constant, bibliothèque éprouvée et vecteurs de test. |
 | Fraîcheur | `auth_date` de moins de 300 s (réglable : `TELEGRAM_INITDATA_MAX_AGE_S`), et pas plus de 60 s dans le futur. Sinon `init_data_expired` : la Mini App demande de la fermer et de la rouvrir. |
-| Identité | Seul `user.id` compte : c'est `drivers.telegram_user_id` (entier 64 bits). Le nom, le pseudo et la photo ne servent qu'à l'affichage. `start_param` sert à la navigation, jamais à autoriser. |
+| Identité | Seul `user.id` compte : c'est le `telegram_user_id` de la liaison active (`driver_links`, entier 64 bits). Le nom, le pseudo et la photo ne servent qu'à l'affichage. `start_param` sert à la navigation, jamais à autoriser. |
 | Station | Déduite du bot dont le token valide la signature, jamais envoyée par le client. Un seul bot en Phase 1 ; un bot par station en Phase 4. |
-| Correspondance Telegram → chauffeur | Pas de création de chauffeur à la connexion, sinon n'importe quel compte Telegram deviendrait chauffeur. Le chauffeur est pré-inscrit (import, ou contrat S par un `admin`) avec son téléphone, puis lié par le bot quand il partage son contact (contrat Q). Un compte Telegram par chauffeur et par station. Inconnu → `driver_not_linked` ; bloqué → `driver_blocked`. |
-| Utilisateur Supabase | Un utilisateur Supabase Auth par chauffeur (`drivers.auth_user_id`), créé par le backend à la première connexion, sans mot de passe ni e-mail réel. Inscriptions publiques et connexions anonymes désactivées dans le projet. |
+| Correspondance Telegram → chauffeur | Pas de création de chauffeur à la connexion, sinon n'importe quel compte Telegram deviendrait chauffeur. Le chauffeur est pré-inscrit (import, ou contrat S par un `admin`) avec son téléphone, puis lié par le bot quand il partage son contact (contrat Q). Une seule liaison active par chauffeur, et par compte Telegram dans une station. Inconnu ou délié → `driver_not_linked` ; bloqué → `driver_blocked`. |
+| Utilisateur Supabase | Une identité Supabase Auth par liaison Telegram (`driver_links.auth_user_id`, D-022), créée par le backend à la première connexion qui suit la liaison, sans mot de passe ni e-mail réel. Une nouvelle liaison reçoit une nouvelle identité ; le `driver_id`, les courses et l'historique comptable ne changent pas. Inscriptions publiques et connexions anonymes désactivées dans le projet. |
 | Émission de la session | (a) Recommandé : session Supabase Auth émise côté serveur pour l'utilisateur lié — rafraîchissement et révocation fournis par Supabase. (b) Repli : JWT signé par le backend avec une clé de signature du projet, avec notre propre rafraîchissement. Choix tranché par le prototype jetable TMA-03 ; avec (a), le contrat J ne change pas pour la Mini App. |
 | Durée de vie | Jeton d'accès d'une heure au plus, rafraîchi automatiquement par supabase-js et transmis à Realtime. Session gardée en mémoire seulement (`persistSession: false`) : chaque ouverture de la Mini App refait l'échange. |
-| Utilisation | Les fonctions `driver-*` exigent `Authorization: Bearer <access_token>`, vérifient le jeton, retrouvent le chauffeur par `auth_user_id` et relisent son statut à chaque appel. L'identité ne vient jamais du corps de la requête. |
-| RLS | Les chauffeurs n'ont **aucune** politique sur les tables métier : RLS étant activé partout, tout est refusé. Leur seule politique : recevoir les messages de leurs canaux sur `realtime.messages`, par une fonction d'aide qui vérifie le chauffeur sans leur ouvrir la table `drivers` ([`DATABASE.md`](DATABASE.md)). Chauffeurs et sadranim étant tous deux `authenticated`, aucune politique ne s'appuie sur ce seul rôle. |
-| Révocation | Bloquer un chauffeur passe par le contrat S (`manage-driver`, rôle `admin`), qui met `status = 'blocked'` et révoque ses sessions. Effet immédiat sur les fonctions `driver-*`, sur le claim et sur l'ouverture d'un canal temps réel. Un canal déjà ouvert peut encore recevoir des signaux sans données jusqu'à l'expiration du jeton. |
+| Utilisation | Les fonctions `driver-*` exigent `Authorization: Bearer <access_token>`, vérifient le jeton, retrouvent la liaison **active** par `auth_user_id`, puis le chauffeur, et relisent son statut à chaque appel. Un jeton d'une liaison révoquée est refusé (`driver_not_linked`), même avant son expiration. L'identité ne vient jamais du corps de la requête. |
+| RLS | Les chauffeurs n'ont **aucune** politique sur les tables métier : RLS étant activé partout, tout est refusé. Leur seule politique : recevoir les messages de leurs canaux sur `realtime.messages`, par une fonction d'aide qui vérifie la liaison active et le chauffeur sans leur ouvrir les tables ([`DATABASE.md`](DATABASE.md)). Chauffeurs et sadranim étant tous deux `authenticated`, aucune politique ne s'appuie sur ce seul rôle. |
+| Révocation | **Bloquer** (contrat S, rôle `admin`) met `status = 'blocked'` et révoque les sessions : effet immédiat sur les fonctions `driver-*`, le claim et l'ouverture d'un canal temps réel. **Délier** (S, `unlink_telegram`, D-022) passe d'abord la liaison à `revoked` en base, ce qui refuse l'ancien jeton dès l'appel suivant, même si la suite échoue ; ensuite seulement, l'identité Supabase de la liaison est supprimée, en réessayant. Supprimer une identité ne suffirait pas seul : un jeton déjà émis reste valable jusqu'à son expiration. Dans les deux cas, un canal temps réel déjà ouvert peut encore recevoir des signaux, sans donnée personnelle, jusqu'à l'expiration du jeton (une heure au plus). |
+| Téléphone perdu ou volé | 1. Le chauffeur appelle le sadran ; un `admin` délie avec la raison `compromised` : l'ancien téléphone perd l'accès tout de suite, et partager le contact ne suffit plus pour se relier (Q, `link_requires_admin`). 2. Le chauffeur récupère un téléphone ; s'il garde le même compte Telegram, il ferme d'abord les autres sessions (Telegram : Paramètres → Appareils). 3. Au téléphone avec lui, l'admin autorise une nouvelle liaison pendant 15 minutes (S, `allow_relink`), en précisant si l'ancien compte est accepté. 4. Le chauffeur partage son contact dans le bot : nouvelle liaison, nouvelle identité, mêmes courses et même historique. |
 | Journaux | Jamais d'initData, de jeton ni de numéro complet dans les logs. Les refus sont comptés par code pour le pilote. |
 
 ## Temps réel
@@ -265,14 +307,14 @@ Détail du contrat : P dans [`API_CONTRACTS.md`](API_CONTRACTS.md).
 2. La Mini App appelle `driver-claim-ride` avec seulement `ride_id` : le chauffeur vient du jeton. Le bot appelle `claim-ride` avec `ride_id` et le `telegram_user_id` de l'auteur du clic, reçu par son webhook vérifié.
 3. Le backend retrouve le chauffeur et appelle la fonction SQL `claim_ride` — la même pour le bot, la Mini App et le dashboard (`assign-ride`).
 4. `claim_ride` fait **une seule requête conditionnelle** : la course passe à `claimed` seulement si elle est encore `posted` et si le chauffeur est `active` dans la même station. La `version` augmente de 1 et l'événement `ride_events` est écrit dans la même transaction. Esquisse SQL : [`DATABASE.md`](DATABASE.md).
-5. Dans la même transaction : signaux `ride_unavailable` (station) et `ride_assigned` (gagnant), et envois R dans la file du bot — détails au gagnant en message privé, « נלקחה » sur les messages des autres.
+5. Dans la même transaction : signaux `ride_unavailable` (station) et `ride_assigned` (gagnant), et envois R dans la file du bot — l'attribution au gagnant, avec les détails en message privé, et une correction de chaque message connu de la course, gagnant compris.
 
 **Deux chauffeurs au même instant**, quel que soit leur canal : Postgres verrouille la ligne ; la deuxième mise à jour attend la première, relit `status`, trouve `claimed` et ne modifie rien → `already_taken`.
 
 **Un claim et une annulation du sadran au même instant :** la transaction qui verrouille la ligne en premier passe.
 
 - Annulation d'abord : le claim reçoit `not_claimable`.
-- Claim d'abord : l'annulation s'applique ensuite à la course prise (`claimed → cancelled` est permis), et le chauffeur est prévenu (envoi R, signal `ride_cancelled`).
+- Claim d'abord : l'annulation s'applique ensuite à la course prise (`claimed → cancelled` est permis), et le chauffeur est prévenu (avis d'annulation R, signal `ride_cancelled`).
 
 Pour que l'annulation soit refusée quand la course a changé depuis que le sadran l'a vue, le dashboard envoie `expected_version` (contrat G) : course modifiée entre-temps → `version_conflict`, le dashboard relit et le sadran décide.
 
@@ -348,6 +390,7 @@ flowchart LR
 - Chaque appel entre modules est authentifié par un secret propre au module, y compris le réveil du bot par le backend (voir [`API_CONTRACTS.md`](API_CONTRACTS.md)) ; chaque appel d'un chauffeur ou d'un sadran, par son jeton de session. Ce que chacun a le droit de faire : tableau « Qui peut appeler quoi ».
 - Le webhook Telegram vérifie l'en-tête secret fourni par Telegram. Le webhook de fin d'appel ElevenLabs vérifie sa signature.
 - Jamais de numéro ni de nom de client dans un message, un écran ou un signal temps réel vu par plusieurs chauffeurs.
-- Les fonctions SQL `security definer` vivent dans un schéma non exposé par l'API. Celles qui modifient des données, dont `claim_ride`, ne sont pas exécutables par `anon` ni `authenticated` ; seules les fonctions d'aide RLS, en lecture seule, le sont par `authenticated`.
+- Les fonctions SQL `security definer` vivent dans un schéma non exposé par l'API. Chacune reçoit ses droits explicitement dans sa migration, et un test contrôle les droits effectifs ([`DATABASE.md`](DATABASE.md)) : celles qui modifient des données, dont `claim_ride`, ne sont exécutables ni par `anon` ni par `authenticated` ; seules les fonctions d'aide RLS, en lecture seule, le sont par `authenticated`.
+- Délier un chauffeur coupe l'accès de l'ancienne liaison Telegram dès l'appel suivant ; après un vol, la nouvelle liaison passe par un `admin` (D-022).
 - Les fonctions `driver-*` n'acceptent que l'origine de la Mini App (CORS).
 - Enregistrements d'appels dans un stockage privé. Durée de conservation à fixer avec l'avocat (amendement 13).
