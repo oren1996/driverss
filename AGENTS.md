@@ -25,7 +25,7 @@ Ce fichier s'adresse à toute IA (Claude Code, Codex, Cursor…) qui travaille d
 
 | Module | Responsable | Possède | Ne fait jamais |
 | --- | --- | --- | --- |
-| `backend/` | Oren | Base, prix, statuts, transitions, claim atomique, éligibilité des chauffeurs, auth des chauffeurs (initData), temps réel, grand livre des 7 %, sécurité | Prompt vocal détaillé, UX du bot et de la Mini App |
+| `backend/` | Oren | Base, prix et devis, statuts, transitions, claim atomique, éligibilité des chauffeurs, droits de chaque appelant, auth des chauffeurs (initData), temps réel, file des envois du bot, grand livre des 7 %, sécurité | Prompt vocal détaillé, UX du bot et de la Mini App |
 | `voice/` | Eitan | Téléphonie SIP, agent ElevenLabs, prompt, tests vocaux, transfert humain | Calculer un prix, écrire en base, choisir un chauffeur |
 | `dispatch/` | Ilan | Bot Telegram, Mini App chauffeur (`dispatch/miniapp/`), dashboard du sadran, repli manuel, mesures du pilote | Calculer un prix, créer une course dans son propre stockage, décider qui est notifié ou qui peut prendre une course, décider seul qu'une course est prise |
 

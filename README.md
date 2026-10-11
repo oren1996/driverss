@@ -79,7 +79,7 @@ Déconseillés : `telegram` (sert à piloter Claude Code depuis Telegram, pas à
 
 ## Workflow Git
 
-- `main` est protégée : tout passe par une pull request.
+- Règle d'équipe : tout passe par une pull request vers `main`. GitHub ne l'impose pas encore : `main` n'est pas protégée. Sur un compte GitHub gratuit, la protection n'existe que pour un dépôt public ; pour un dépôt privé, il faut GitHub Pro.
 - Branches : `oren/<sujet>`, `eitan/<sujet>`, `ilan/<sujet>`.
 - Tout ce qui touche `backend/`, les contrats d'API ou la base est relu par Oren (voir `.github/CODEOWNERS`).
 - Une fonctionnalité est « finie » seulement après un test de bout en bout où la donnée finale en base est correcte.
